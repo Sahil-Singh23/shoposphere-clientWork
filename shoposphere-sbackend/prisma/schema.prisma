@@ -76,11 +76,7 @@ model Product {
   isNew         Boolean        @default(false)
   isTrending    Boolean        @default(false)
   isReady60Min  Boolean        @default(false) // 60 minutes ready/delivery option
-  hasSinglePrice Boolean       @default(false) // If true, use singlePrice instead of sizes
-  singlePrice   Float?         // Selling price for products without size variants
-  originalPrice Float?         // MRP / list price for single-price products (strikethrough on frontend)
-  // Weight-based options for fruits (e.g., [{weight: "100g", price: 100, stock?: number}, ...])
-  weightOptions String?        @db.Text // JSON array: [{weight: string, price: float, originalPrice?: float, stock?: number}]
+  originalPrice Float?         // Optional product-level MRP hint (actual selling price comes from sizes)
   images        String         @db.Text // JSON array of image URLs
   videos        String?        @db.Text // JSON array of video URLs (optional)
   instagramEmbeds String?      @db.Text // JSON array of Instagram embed objects: [{url, enabled, createdAt}]
@@ -318,8 +314,7 @@ model CartItem {
   id            Int     @id @default(autoincrement())
   cartId        String
   productId     Int
-  productSizeId Int?    // null = single-price product (use product.singlePrice) OR weight-based
-  selectedWeight String? // Weight selected (e.g., "100g", "500g") for weight-based fruits
+  productSizeId Int?
   quantity      Int     @default(1)
   // Fruit basket packaging line (uses system packaging product + override price/title)
   lineKind       String  @default("product") @db.VarChar(32) // "product" | "fruit_basket_packaging"
@@ -404,7 +399,7 @@ model SavedFruitBasket {
   userId        Int
   name          String   @db.VarChar(255)
   fruitBasketId Int
-  fruitsJson    String   @db.Text // [{ productId, quantity, selectedWeight?, productSizeId? }]
+  fruitsJson    String   @db.Text // [{ productId, quantity, productSizeId? }]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

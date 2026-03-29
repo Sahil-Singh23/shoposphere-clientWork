@@ -24,16 +24,8 @@ function optionalCustomerAuth(req, res, next) {
   next();
 }
 
-/** Get stock for a single variant (weight, size, or product-level). */
+/** Get stock for a single variant (size or product-level). */
 function getVariantStock(product, item) {
-  if (item.selectedWeight && product.weightOptions) {
-    try {
-      const opts = Array.isArray(product.weightOptions) ? product.weightOptions : JSON.parse(product.weightOptions);
-      const w = opts.find((o) => String(o.weight).trim() === String(item.selectedWeight).trim());
-      if (w) return Math.max(0, Number(w.stock ?? product.stock ?? 0));
-    } catch {}
-    return 0;
-  }
   if (item.productSizeId != null && product.sizes?.length) {
     const size = product.sizes.find((s) => s.id === item.productSizeId);
     if (size) return Math.max(0, Number(size.stock ?? 0));
@@ -78,7 +70,6 @@ async function hydrateCartItems(items) {
           productImage,
           sizeId: 0,
           sizeLabel: "Packaging",
-          selectedWeight: null,
           price,
           quantity,
           subtotal: price * quantity,
@@ -92,27 +83,12 @@ async function hydrateCartItems(items) {
       let price = 0;
       let sizeId = 0;
 
-      // Weight-based product (fruits)
-      if (item.selectedWeight && product.weightOptions) {
-        try {
-          const weightOptions = Array.isArray(product.weightOptions)
-            ? product.weightOptions
-            : JSON.parse(product.weightOptions);
-          const selectedOption = weightOptions.find((w) => w.weight === item.selectedWeight);
-          if (!selectedOption) return null;
-          sizeLabel = item.selectedWeight;
-          price = parseFloat(selectedOption.price);
-        } catch {
-          return null;
-        }
-      } else if (item.productSizeId != null) {
+      if (item.productSizeId != null) {
         const size = product.sizes.find((s) => s.id === item.productSizeId);
         if (!size) return null;
         sizeLabel = size.label;
         price = parseFloat(size.price);
         sizeId = size.id;
-      } else if (product.hasSinglePrice && product.singlePrice != null) {
-        price = parseFloat(product.singlePrice);
       } else {
         return null;
       }
@@ -127,7 +103,6 @@ async function hydrateCartItems(items) {
         productImage,
         sizeId,
         sizeLabel,
-        selectedWeight: item.selectedWeight || null,
         price,
         quantity,
         subtotal,
@@ -207,10 +182,10 @@ router.get("/", optionalCustomerAuth, async (req, res) => {
   }
 });
 
-// POST /cart/items — add or update item: { productId, productSizeId?: number | null, selectedWeight?: string, quantity }
+// POST /cart/items — add or update item: { productId, productSizeId: number, quantity }
 router.post("/items", optionalCustomerAuth, async (req, res) => {
   try {
-    const { productId, productSizeId = null, selectedWeight = null, quantity = 1 } = req.body || {};
+    const { productId, productSizeId = null, quantity = 1 } = req.body || {};
     if (!productId || quantity < 1) {
       return res.status(400).json({ error: "productId and positive quantity required" });
     }
@@ -227,7 +202,6 @@ router.post("/items", optionalCustomerAuth, async (req, res) => {
     const sizeIdForStock = productSizeId === undefined || productSizeId === null ? null : Number(productSizeId);
     const variantStock = getVariantStock(product, {
       productSizeId: sizeIdForStock,
-      selectedWeight: selectedWeight || null,
     });
     if (variantStock <= 0) {
       return res.status(400).json({ error: "This variant is out of stock" });
@@ -236,8 +210,7 @@ router.post("/items", optionalCustomerAuth, async (req, res) => {
       .filter(
         (i) =>
           i.productId === Number(productId) &&
-          (i.productSizeId ?? null) === sizeIdForStock &&
-          (i.selectedWeight ?? null) === (selectedWeight || null)
+          (i.productSizeId ?? null) === sizeIdForStock
       )
       .reduce((sum, i) => sum + i.quantity, 0);
     if (currentQtySameVariant + quantity > variantStock) {
@@ -247,40 +220,20 @@ router.post("/items", optionalCustomerAuth, async (req, res) => {
       });
     }
 
-    // Validate weight-based product
-    if (selectedWeight) {
-      if (!product.weightOptions) {
-        return res.status(400).json({ error: "This product does not have weight options" });
-      }
-      try {
-        const weightOptions = Array.isArray(product.weightOptions)
-          ? product.weightOptions
-          : JSON.parse(product.weightOptions);
-        const weightExists = weightOptions.some((w) => w.weight === selectedWeight);
-        if (!weightExists) {
-          return res.status(400).json({ error: `Invalid weight: ${selectedWeight}` });
-        }
-      } catch {
-        return res.status(400).json({ error: "Invalid weight options data" });
-      }
+    // Validate size-based product
+    const sizeId = productSizeId === undefined || productSizeId === null ? null : Number(productSizeId);
+    if (sizeId !== null) {
+      const size = product.sizes.find((s) => s.id === sizeId);
+      if (!size) return res.status(400).json({ error: "Invalid product size" });
     } else {
-      // Validate size-based product
-      const sizeId = productSizeId === undefined || productSizeId === null ? null : Number(productSizeId);
-      if (sizeId !== null) {
-        const size = product.sizes.find((s) => s.id === sizeId);
-        if (!size) return res.status(400).json({ error: "Invalid product size" });
-      } else if (!product.hasSinglePrice || product.singlePrice == null) {
-        return res.status(400).json({ error: "Product requires either a weight, size, or single price" });
-      }
+      return res.status(400).json({ error: "productSizeId is required" });
     }
 
-    const sizeId = productSizeId === undefined || productSizeId === null ? null : Number(productSizeId);
     const existing = await prisma.cartItem.findFirst({
       where: {
         cartId: cart.id,
         productId: Number(productId),
         productSizeId: sizeId,
-        selectedWeight: selectedWeight,
         lineKind: "product",
       },
     });
@@ -297,7 +250,6 @@ router.post("/items", optionalCustomerAuth, async (req, res) => {
           cartId: cart.id,
           productId: Number(productId),
           productSizeId: sizeId,
-          selectedWeight: selectedWeight,
           quantity,
           lineKind: "product",
         },
@@ -315,7 +267,7 @@ router.post("/items", optionalCustomerAuth, async (req, res) => {
 
 /**
  * POST /cart/fruit-basket — add personalized fruit basket: fruits + packaging line (server-priced).
- * Body: { fruitBasketId: number, items: [{ productId, productSizeId?, selectedWeight?, quantity }] }
+ * Body: { fruitBasketId: number, items: [{ productId, productSizeId, quantity }] }
  */
 router.post("/fruit-basket", optionalCustomerAuth, async (req, res) => {
   try {
@@ -343,7 +295,6 @@ router.post("/fruit-basket", optionalCustomerAuth, async (req, res) => {
     for (const line of fruitItems) {
       const productId = Number(line.productId);
       const quantity = Math.max(1, Number(line.quantity) || 1);
-      const selectedWeight = line.selectedWeight != null && line.selectedWeight !== "" ? line.selectedWeight : null;
       const sizeId =
         line.productSizeId === undefined || line.productSizeId === null ? null : Number(line.productSizeId);
 
@@ -367,7 +318,6 @@ router.post("/fruit-basket", optionalCustomerAuth, async (req, res) => {
       const sizeIdForStock = sizeId;
       const variantStock = getVariantStock(product, {
         productSizeId: sizeIdForStock,
-        selectedWeight: selectedWeight || null,
       });
       if (variantStock <= 0) {
         return res.status(400).json({ error: `"${product.name}" is out of stock` });
@@ -377,8 +327,7 @@ router.post("/fruit-basket", optionalCustomerAuth, async (req, res) => {
           (i) =>
             (i.lineKind || "product") === "product" &&
             i.productId === productId &&
-            (i.productSizeId ?? null) === sizeIdForStock &&
-            (i.selectedWeight ?? null) === (selectedWeight || null)
+            (i.productSizeId ?? null) === sizeIdForStock
         )
         .reduce((sum, i) => sum + i.quantity, 0);
       if (currentQtySameVariant + quantity > variantStock) {
@@ -388,28 +337,11 @@ router.post("/fruit-basket", optionalCustomerAuth, async (req, res) => {
         });
       }
 
-      if (selectedWeight) {
-        if (!product.weightOptions) {
-          return res.status(400).json({ error: `"${product.name}" does not support weight selection` });
-        }
-        try {
-          const weightOptions = Array.isArray(product.weightOptions)
-            ? product.weightOptions
-            : JSON.parse(product.weightOptions);
-          const weightExists = weightOptions.some((w) => w.weight === selectedWeight);
-          if (!weightExists) {
-            return res.status(400).json({ error: `Invalid weight for "${product.name}"` });
-          }
-        } catch {
-          return res.status(400).json({ error: "Invalid weight options data" });
-        }
+      if (sizeId !== null) {
+        const size = product.sizes.find((s) => s.id === sizeId);
+        if (!size) return res.status(400).json({ error: `Invalid size for "${product.name}"` });
       } else {
-        if (sizeId !== null) {
-          const size = product.sizes.find((s) => s.id === sizeId);
-          if (!size) return res.status(400).json({ error: `Invalid size for "${product.name}"` });
-        } else if (!product.hasSinglePrice || product.singlePrice == null) {
-          return res.status(400).json({ error: `"${product.name}" requires weight or size` });
-        }
+        return res.status(400).json({ error: `"${product.name}" requires size selection` });
       }
 
       const existing = await prisma.cartItem.findFirst({
@@ -417,7 +349,6 @@ router.post("/fruit-basket", optionalCustomerAuth, async (req, res) => {
           cartId: cart.id,
           productId,
           productSizeId: sizeId,
-          selectedWeight,
           lineKind: "product",
         },
       });
@@ -433,7 +364,6 @@ router.post("/fruit-basket", optionalCustomerAuth, async (req, res) => {
             cartId: cart.id,
             productId,
             productSizeId: sizeId,
-            selectedWeight,
             quantity,
             lineKind: "product",
           },
@@ -446,7 +376,6 @@ router.post("/fruit-basket", optionalCustomerAuth, async (req, res) => {
         cartId: cart.id,
         productId: packagingProductId,
         productSizeId: null,
-        selectedWeight: null,
         quantity: 1,
         lineKind: "fruit_basket_packaging",
         packagingPrice: Number(basket.price),
@@ -494,14 +423,12 @@ router.patch("/items/:id", optionalCustomerAuth, async (req, res) => {
     if (!product) return res.status(404).json({ error: "Product not found" });
     const variantStock = getVariantStock(product, {
       productSizeId: existing.productSizeId,
-      selectedWeight: existing.selectedWeight,
     });
     const otherQtySameVariant = cart.items
       .filter(
         (i) =>
           i.productId === existing.productId &&
           (i.productSizeId ?? null) === (existing.productSizeId ?? null) &&
-          (i.selectedWeight ?? null) === (existing.selectedWeight ?? null) &&
           i.id !== id
       )
       .reduce((sum, i) => sum + i.quantity, 0);
@@ -614,7 +541,6 @@ router.post("/merge", optionalCustomerAuth, async (req, res) => {
                   cartId: userCart.id,
                   productId: gi.productId,
                   productSizeId: gi.productSizeId,
-                  selectedWeight: gi.selectedWeight,
                   lineKind: "product",
                 },
         });
@@ -629,7 +555,6 @@ router.post("/merge", optionalCustomerAuth, async (req, res) => {
               cartId: userCart.id,
               productId: gi.productId,
               productSizeId: gi.productSizeId,
-              selectedWeight: gi.selectedWeight,
               quantity: gi.quantity,
               lineKind,
               packagingPrice: gi.packagingPrice,

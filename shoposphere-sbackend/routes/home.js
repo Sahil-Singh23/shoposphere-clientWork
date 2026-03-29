@@ -54,16 +54,6 @@ router.get("/", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
       images: p.images ? JSON.parse(p.images) : [],
       videos: p.videos ? JSON.parse(p.videos) : [],
       keywords: p.keywords ? JSON.parse(p.keywords) : [],
-      weightOptions: p.weightOptions
-        ? (() => {
-            try {
-              const w = JSON.parse(p.weightOptions);
-              return Array.isArray(w) ? w : [];
-            } catch {
-              return [];
-            }
-          })()
-        : [],
       categories: p.categories ? p.categories.map((pc) => pc.category) : [],
       occasions: p.occasions ? p.occasions.map((po) => po.occasion) : [],
     }));

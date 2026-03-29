@@ -1,21 +1,13 @@
 import prisma from "../prisma.js";
 
 /**
- * Get effective stock for a single item (by variant: size, weight, or product-level).
- * @param {object} product - Product with sizes and weightOptions (parsed)
- * @param {{ sizeId?: number | null, selectedWeight?: string | null }} variant
+ * Get effective stock for a single item (by variant: size or product-level).
+ * @param {object} product - Product with sizes
+ * @param {{ sizeId?: number | null }} variant
  * @returns {number}
  */
 function getVariantStock(product, variant) {
   const sizeId = variant.sizeId != null && variant.sizeId !== 0 ? Number(variant.sizeId) : null;
-  const selectedWeight = variant.selectedWeight || null;
-
-  if (selectedWeight && product.weightOptions) {
-    const opts = Array.isArray(product.weightOptions) ? product.weightOptions : (() => { try { return JSON.parse(product.weightOptions || "[]"); } catch { return []; } })();
-    const w = opts.find((o) => String(o.weight).trim() === String(selectedWeight).trim());
-    if (w) return Math.max(0, Number(w.stock ?? product.stock ?? 0));
-    return 0;
-  }
   if (sizeId && product.sizes?.length) {
     const size = product.sizes.find((s) => s.id === sizeId);
     if (size) return Math.max(0, Number(size.stock ?? 0));
@@ -25,14 +17,14 @@ function getVariantStock(product, variant) {
 }
 
 /**
- * Deduct stock for order items by variant (size / weight / product). Uses transaction.
+ * Deduct stock for order items by variant (size / product). Uses transaction.
  * @param {import("@prisma/client").Prisma.TransactionClient} tx - Prisma transaction client
- * @param {Array<{ productId: number, quantity: number, sizeId?: number | null, selectedWeight?: string | null }>} items - Hydrated cart items with variant info
+ * @param {Array<{ productId: number, quantity: number, sizeId?: number | null }>} items - Hydrated cart items with variant info
  * @throws {Error} If any variant has insufficient stock
  */
 export async function deductStockForOrder(tx, items) {
-  // Group by variant key so we deduct once per (productId, sizeId, selectedWeight)
-  const key = (item) => `${item.productId}|${item.sizeId ?? ""}|${item.selectedWeight ?? ""}`;
+  // Group by variant key so we deduct once per (productId, sizeId)
+  const key = (item) => `${item.productId}|${item.sizeId ?? ""}`;
   const byVariant = new Map();
   for (const item of items) {
     if (item.skipStockDeduction) continue;
@@ -54,39 +46,16 @@ export async function deductStockForOrder(tx, items) {
     if (!product) throw new Error("Product not found");
 
     const sizeId = item.sizeId != null && item.sizeId !== 0 ? Number(item.sizeId) : null;
-    const selectedWeight = item.selectedWeight || null;
     const qty = item.quantity;
-
-    if (selectedWeight && product.weightOptions) {
-      let opts;
-      try {
-        opts = Array.isArray(product.weightOptions) ? [...product.weightOptions] : JSON.parse(product.weightOptions || "[]");
-      } catch {
-        throw new Error(`Invalid weight options for "${product.name}"`);
-      }
-      const idx = opts.findIndex((o) => String(o.weight).trim() === String(selectedWeight).trim());
-      if (idx === -1) throw new Error(`Weight "${selectedWeight}" not found for "${product.name}"`);
-      const current = Math.max(0, Number(opts[idx].stock ?? product.stock ?? 0));
-      if (current < qty) {
-        throw new Error(`Insufficient stock for "${product.name}" (${selectedWeight}). Available: ${current}`);
-      }
-      opts[idx] = { ...opts[idx], stock: current - qty };
-      await tx.product.update({
-        where: { id: product.id },
-        data: { weightOptions: JSON.stringify(opts) },
-      });
-      continue;
-    }
 
     if (sizeId) {
       const size = product.sizes?.find((s) => s.id === sizeId);
       if (!size) throw new Error(`Size not found for "${product.name}"`);
-      const result = await tx.$executeRaw`
-        UPDATE "ProductSize"
-        SET stock = stock - ${qty}
-        WHERE id = ${sizeId} AND stock >= ${qty}
-      `;
-      if (result === 0) {
+      const result = await tx.productSize.updateMany({
+        where: { id: sizeId, stock: { gte: qty } },
+        data: { stock: { decrement: qty } },
+      });
+      if (result.count === 0) {
         const row = await tx.productSize.findUnique({ where: { id: sizeId }, select: { stock: true } });
         throw new Error(
           `Insufficient stock for "${product.name}" (${size.label}). Available: ${Number(row?.stock ?? 0)}`
@@ -95,12 +64,11 @@ export async function deductStockForOrder(tx, items) {
       continue;
     }
 
-    const result = await tx.$executeRaw`
-      UPDATE "Product"
-      SET stock = stock - ${qty}
-      WHERE id = ${product.id} AND stock >= ${qty}
-    `;
-    if (result === 0) {
+    const result = await tx.product.updateMany({
+      where: { id: product.id, stock: { gte: qty } },
+      data: { stock: { decrement: qty } },
+    });
+    if (result.count === 0) {
       const p = await tx.product.findUnique({
         where: { id: product.id },
         select: { name: true, stock: true },
@@ -115,12 +83,12 @@ export async function deductStockForOrder(tx, items) {
 }
 
 /**
- * Validate that cart items have sufficient stock (read-only). Items must include variant info (sizeId, selectedWeight).
- * @param {Array<{ productId: number, quantity: number, sizeId?: number | null, selectedWeight?: string | null }>} items - Hydrated cart items
+ * Validate that cart items have sufficient stock (read-only). Items must include sizeId when applicable.
+ * @param {Array<{ productId: number, quantity: number, sizeId?: number | null }>} items - Hydrated cart items
  * @returns {{ ok: boolean, error?: string }}
  */
 export async function validateStockForItems(items) {
-  const key = (item) => `${item.productId}|${item.sizeId ?? ""}|${item.selectedWeight ?? ""}`;
+  const key = (item) => `${item.productId}|${item.sizeId ?? ""}`;
   const byVariant = new Map();
   for (const item of items) {
     if (item.skipStockDeduction) continue;
@@ -143,10 +111,10 @@ export async function validateStockForItems(items) {
     if (!product) {
       return { ok: false, error: "One or more products are no longer available" };
     }
-    const available = getVariantStock(product, { sizeId: item.sizeId, selectedWeight: item.selectedWeight });
+    const available = getVariantStock(product, { sizeId: item.sizeId });
     const required = item.quantity;
     if (required > available) {
-      const label = item.selectedWeight || product.sizes?.find((s) => s.id === item.sizeId)?.label || "item";
+      const label = product.sizes?.find((s) => s.id === item.sizeId)?.label || "item";
       return {
         ok: false,
         error: available === 0

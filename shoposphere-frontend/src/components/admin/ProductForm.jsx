@@ -19,13 +19,12 @@ export default function ProductForm({ product, categories, occasions = [], onSav
     isNew: false,
     isTrending: false,
     isReady60Min: false,
-    hasSinglePrice: false,
-    singlePrice: "",
     originalPrice: "", // MRP for single-price products
     keywords: "",
   });
   const [sizes, setSizes] = useState([]);
-  const [weights, setWeights] = useState([]); // For weight-based products (fruits)
+  const [sizeSellingPrice, setSizeSellingPrice] = useState("");
+  const [sizeMrp, setSizeMrp] = useState("");
   const [sizeOptions, setSizeOptions] = useState([]); // Reusable size options from API
   const [images, setImages] = useState([]);
   const [existingImages, setExistingImages] = useState([]);
@@ -35,7 +34,7 @@ export default function ProductForm({ product, categories, occasions = [], onSav
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedOccasions, setSelectedOccasions] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [loadingSizeOptions, setLoadingSizeOptions] = useState(false);
+  const [, setLoadingSizeOptions] = useState(false);
   const [generatingDescription, setGeneratingDescription] = useState(false);
   const [descriptionLanguage, setDescriptionLanguage] = useState("English");
   const formRef = useRef(null);
@@ -46,14 +45,15 @@ export default function ProductForm({ product, categories, occasions = [], onSav
     return JSON.stringify({
       formData,
       sizes,
-      weights,
+      sizeSellingPrice,
+      sizeMrp,
       existingImages,
       selectedCategories,
       selectedOccasions,
       // For new images, treat any selection as "dirty"
       imagesSelectedCount: images.length,
     });
-  }, [formData, sizes, weights, existingImages, selectedCategories, selectedOccasions, images.length]);
+  }, [formData, sizes, sizeSellingPrice, sizeMrp, existingImages, selectedCategories, selectedOccasions, images.length]);
 
   const isDirty = initialSnapshotRef.current !== "" && snapshot !== initialSnapshotRef.current;
 
@@ -67,8 +67,6 @@ export default function ProductForm({ product, categories, occasions = [], onSav
         isNew: product.isNew || false,
         isTrending: product.isTrending || false,
         isReady60Min: product.isReady60Min || false,
-        hasSinglePrice: product.hasSinglePrice || false,
-        singlePrice: product.singlePrice ? String(product.singlePrice) : "",
         originalPrice: product.originalPrice != null ? String(product.originalPrice) : "",
         keywords: product.keywords ? (Array.isArray(product.keywords) ? product.keywords.join(", ") : product.keywords) : "",
       });
@@ -76,30 +74,13 @@ export default function ProductForm({ product, categories, occasions = [], onSav
         product.sizes && product.sizes.length > 0
           ? product.sizes.map((s) => ({
               label: s.label,
-              price: String(s.price ?? ""),
-              originalPrice: s.originalPrice != null ? String(s.originalPrice) : "",
               stock: String(typeof s.stock === "number" ? s.stock : s.stock ?? "0"),
             }))
           : []
       );
-      // Initialize weights from weightOptions (include stock per weight)
-      if (product.weightOptions) {
-        try {
-          const weightOpts = Array.isArray(product.weightOptions) ? product.weightOptions : JSON.parse(product.weightOptions);
-          setWeights(
-            weightOpts.map((w) => ({
-              weight: w.weight,
-              price: String(w.price ?? ""),
-              originalPrice: w.originalPrice != null ? String(w.originalPrice) : "",
-              stock: String(typeof w.stock === "number" ? w.stock : w.stock ?? "0"),
-            }))
-          );
-        } catch {
-          setWeights([]);
-        }
-      } else {
-        setWeights([]);
-      }
+      const firstSize = product.sizes && product.sizes.length > 0 ? product.sizes[0] : null;
+      setSizeSellingPrice(firstSize?.price != null ? String(firstSize.price) : "");
+      setSizeMrp(firstSize?.originalPrice != null ? String(firstSize.originalPrice) : "");
       setExistingImages(product.images || []);
       setExistingVideos(product.videos && Array.isArray(product.videos) ? product.videos : []);
       setInstagramEmbeds(product.instagramEmbeds && Array.isArray(product.instagramEmbeds) ? product.instagramEmbeds : []);
@@ -126,13 +107,12 @@ export default function ProductForm({ product, categories, occasions = [], onSav
         isNew: false,
         isTrending: false,
         isReady60Min: false,
-        hasSinglePrice: false,
-        singlePrice: "",
         originalPrice: "",
         keywords: "",
       });
       setSizes([]);
-      setWeights([]);
+      setSizeSellingPrice("");
+      setSizeMrp("");
       setImages([]);
       setExistingImages([]);
       setInstagramEmbeds([]);
@@ -152,8 +132,6 @@ export default function ProductForm({ product, categories, occasions = [], onSav
               isNew: product.isNew || false,
               isTrending: product.isTrending || false,
               isReady60Min: product.isReady60Min || false,
-              hasSinglePrice: product.hasSinglePrice || false,
-              singlePrice: product.singlePrice ? String(product.singlePrice) : "",
               originalPrice: product.originalPrice != null ? String(product.originalPrice) : "",
               keywords: product.keywords ? (Array.isArray(product.keywords) ? product.keywords.join(", ") : product.keywords) : "",
             }
@@ -165,26 +143,21 @@ export default function ProductForm({ product, categories, occasions = [], onSav
               isNew: false,
               isTrending: false,
               isReady60Min: false,
-              hasSinglePrice: false,
-              singlePrice: "",
               originalPrice: "",
               keywords: "",
             },
         sizes:
           product?.sizes && product.sizes.length > 0
-            ? product.sizes.map((s) => ({ label: s.label, price: s.price, originalPrice: s.originalPrice }))
+            ? product.sizes.map((s) => ({ label: s.label, stock: s.stock ?? 0 }))
             : [],
-        weights:
-          product?.weightOptions
-            ? (() => {
-                try {
-                  const weightOpts = Array.isArray(product.weightOptions) ? product.weightOptions : JSON.parse(product.weightOptions);
-                  return weightOpts.map((w) => ({ weight: w.weight, price: w.price, originalPrice: w.originalPrice }));
-                } catch {
-                  return [];
-                }
-              })()
-            : [],
+        sizeSellingPrice:
+          product?.sizes && product.sizes.length > 0 && product.sizes[0]?.price != null
+            ? String(product.sizes[0].price)
+            : "",
+        sizeMrp:
+          product?.sizes && product.sizes.length > 0 && product.sizes[0]?.originalPrice != null
+            ? String(product.sizes[0].originalPrice)
+            : "",
         existingImages: product?.images || [],
         existingVideos: product?.videos && Array.isArray(product.videos) ? product.videos : [],
         selectedCategories:
@@ -226,13 +199,14 @@ export default function ProductForm({ product, categories, occasions = [], onSav
       return;
     }
     
-    // Validation: If hasSinglePrice is true, singlePrice is required
-    if (formData.hasSinglePrice && (!formData.singlePrice || parseFloat(formData.singlePrice) <= 0)) {
-      toast.error("Please enter a valid single price for this product");
+    if (sizes.length === 0) {
+      toast.error("Please select at least one size");
       return;
     }
-    
-    // Validation: If hasSinglePrice is false, either sizes or no price is acceptable (already optional)
+    if (!sizeSellingPrice || parseFloat(sizeSellingPrice) <= 0) {
+      toast.error("Please enter a valid product price");
+      return;
+    }
     
     setLoading(true);
     isSubmittingRef.current = true;
@@ -248,9 +222,7 @@ export default function ProductForm({ product, categories, occasions = [], onSav
       formDataToSend.append("isNew", formData.isNew);
       formDataToSend.append("isTrending", formData.isTrending);
       formDataToSend.append("isReady60Min", formData.isReady60Min);
-      formDataToSend.append("hasSinglePrice", formData.hasSinglePrice);
-      formDataToSend.append("singlePrice", formData.hasSinglePrice && formData.singlePrice ? formData.singlePrice : "");
-      formDataToSend.append("originalPrice", formData.hasSinglePrice && formData.originalPrice ? formData.originalPrice : "");
+      formDataToSend.append("originalPrice", sizeMrp ? sizeMrp : "");
       
       // Auto-generate keywords from product name if not already set
       let keywordsArray = [];
@@ -264,36 +236,26 @@ export default function ProductForm({ product, categories, occasions = [], onSav
       // Categories - send as array
       formDataToSend.append("categoryIds", JSON.stringify(selectedCategories));
       
-      // If hasSinglePrice is true, don't send sizes. Otherwise, send sizes if they exist
-      if (formData.hasSinglePrice) {
-        formDataToSend.append("sizes", JSON.stringify([]));
-      } else {
-        // Sizes are optional - include label, price, originalPrice
-        formDataToSend.append(
-          "sizes",
-          JSON.stringify(
-            sizes.filter((s) => s.label && s.price).map((s) => ({
-              label: s.label,
-              price: s.price,
-              originalPrice: s.originalPrice != null && s.originalPrice !== "" ? s.originalPrice : null,
-              stock: Math.max(0, parseInt(s.stock, 10) || 0),
-            }))
-          )
-        );
-      }
-      
-      // Weight options for fruit/weight-based products (with stock per weight)
+      // Sizes use shared price/MRP with per-size stock.
       formDataToSend.append(
-        "weightOptions",
+        "sizes",
         JSON.stringify(
-          weights.filter((w) => w.weight && w.price).map((w) => ({
-            weight: w.weight,
-            price: w.price,
-            originalPrice: w.originalPrice != null && w.originalPrice !== "" ? w.originalPrice : null,
-            stock: Math.max(0, parseInt(w.stock, 10) || 0),
+          sizes.filter((s) => s.label).map((s) => ({
+            label: s.label,
+            price: sizeSellingPrice,
+            originalPrice: sizeMrp != null && sizeMrp !== "" ? sizeMrp : null,
+            stock: Math.max(0, parseInt(s.stock, 10) || 0),
           }))
         )
       );
+
+      // Keep DB clean from legacy fruit weight payloads.
+      formDataToSend.append(
+        "weightOptions",
+        JSON.stringify([])
+      );
+      formDataToSend.append("hasSinglePrice", "false");
+      formDataToSend.append("singlePrice", "");
       
       formDataToSend.append("occasionIds", JSON.stringify(selectedOccasions));
 
@@ -337,13 +299,12 @@ export default function ProductForm({ product, categories, occasions = [], onSav
           isNew: false,
           isTrending: false,
           isReady60Min: false,
-          hasSinglePrice: false,
-          singlePrice: "",
           originalPrice: "",
           keywords: "",
         });
         setSizes([]);
-        setWeights([]);
+        setSizeSellingPrice("");
+        setSizeMrp("");
         setImages([]);
         setExistingImages([]);
         setSelectedCategories([]);
@@ -375,13 +336,12 @@ export default function ProductForm({ product, categories, occasions = [], onSav
       isNew: false,
       isTrending: false,
       isReady60Min: false,
-      hasSinglePrice: false,
-      singlePrice: "",
       originalPrice: "",
       keywords: "",
     });
     setSizes([]);
-    setWeights([]);
+    setSizeSellingPrice("");
+    setSizeMrp("");
     setImages([]);
     setExistingImages([]);
     setVideos([]);
@@ -408,10 +368,6 @@ export default function ProductForm({ product, categories, occasions = [], onSav
     }
   };
 
-  const addSize = () => {
-    setSizes([...sizes, { label: "", price: "", originalPrice: "", stock: "0" }]);
-  };
-
   const removeSize = (index) => {
     setSizes(sizes.filter((_, i) => i !== index));
   };
@@ -423,52 +379,13 @@ export default function ProductForm({ product, categories, occasions = [], onSav
     setSizes(newSizes);
   };
 
-  // Weight management functions (for weight-based products like fruits)
-  const addWeight = () => {
-    setWeights([...weights, { weight: "", price: "", originalPrice: "", stock: "0" }]);
-  };
-
-  const removeWeight = (index) => {
-    setWeights(weights.filter((_, i) => i !== index));
-  };
-
-  const updateWeight = (index, field, value) => {
-    const newWeights = [...weights];
-    if (!newWeights[index]) return;
-    newWeights[index] = { ...newWeights[index], [field]: value };
-    setWeights(newWeights);
-  };
-
-  // Add custom weight and optionally save to reusable options
-  const addCustomWeight = async (weight, saveAsReusable = false) => {
-    const trimmed = (weight || "").trim();
-    if (!trimmed) return;
-    if (weights.some((w) => (w.weight || "").trim().toLowerCase() === trimmed.toLowerCase())) {
-      toast.error("This weight is already added");
-      return;
-    }
-    setWeights([...weights, { weight: trimmed, price: "", originalPrice: "", stock: "0" }]);
-    if (saveAsReusable) {
-      try {
-        const token = localStorage.getItem("adminToken");
-        await fetch(`${API}/weight-options`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ weight: trimmed }),
-        }).catch(() => {
-          // API endpoint may not exist, but still add to current product
-        });
-      } catch (_) {}
-    }
-  };
-
-  // Toggle saved size option: add/remove from sizes with price/originalPrice
+  // Toggle saved size option: add/remove from selected sizes
   const toggleSizeOption = (label) => {
     const existing = sizes.find((s) => (s.label || "").trim().toLowerCase() === (label || "").trim().toLowerCase());
     if (existing) {
       setSizes(sizes.filter((s) => (s.label || "").trim().toLowerCase() !== (label || "").trim().toLowerCase()));
     } else {
-      setSizes([...sizes, { label: label.trim(), price: "", originalPrice: "", stock: "0" }]);
+      setSizes([...sizes, { label: label.trim(), stock: "0" }]);
     }
   };
 
@@ -480,7 +397,7 @@ export default function ProductForm({ product, categories, occasions = [], onSav
       toast.error("This size is already added");
       return;
     }
-    setSizes([...sizes, { label: trimmed, price: "", originalPrice: "" }]);
+    setSizes([...sizes, { label: trimmed, stock: "0" }]);
     if (saveAsReusable) {
       try {
         const token = localStorage.getItem("adminToken");
@@ -489,7 +406,9 @@ export default function ProductForm({ product, categories, occasions = [], onSav
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ label: trimmed }),
         });
-      } catch (_) {}
+      } catch {
+        // Ignore failures when saving reusable size option.
+      }
     }
   };
 
@@ -511,12 +430,7 @@ export default function ProductForm({ product, categories, occasions = [], onSav
         .join(", ");
       const sizeVariant = sizes.map((s) => s.label).filter(Boolean).join(", ");
       let priceRange = "";
-      if (formData.hasSinglePrice && formData.singlePrice) {
-        priceRange = `₹${formData.singlePrice}`;
-      } else if (sizes.length > 0) {
-        const prices = sizes.map((s) => s.price).filter((p) => p != null && p !== "");
-        if (prices.length) priceRange = `₹${Math.min(...prices.map(Number))} - ₹${Math.max(...prices.map(Number))}`;
-      }
+      if (sizeSellingPrice) priceRange = `₹${sizeSellingPrice}`;
       const payload = {
         product_name: formData.name.trim(),
         category: categoryNames || "General",
@@ -607,7 +521,6 @@ export default function ProductForm({ product, categories, occasions = [], onSav
       }));
       prevProductNameRef.current = "";
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.name]);
   
   // Reset initial load flag when product changes
@@ -858,306 +771,137 @@ export default function ProductForm({ product, categories, occasions = [], onSav
         />
 
         <div className="border-t border-gray-200 pt-6">
-          <div className="mb-4">
-            <label className="flex items-center gap-2 mb-4">
-              <input
-                type="checkbox"
-                checked={formData.hasSinglePrice}
-                onChange={(e) => {
-                  setFormData({ ...formData, hasSinglePrice: e.target.checked });
-                  // Clear sizes when switching to single price
-                  if (e.target.checked) {
-                    setSizes([]);
-                  }
-                }}
-                className="w-4 h-4 text-pink-600 rounded focus:ring-pink-500"
-              />
-              <span className="text-sm font-semibold text-gray-700">No Size / Single Variant</span>
-            </label>
-          </div>
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-semibold text-gray-700">Sizes & Stock</label>
+            </div>
+            {sizeOptions.length > 0 && (
+              <div className="mb-4">
+                <p className="text-xs text-gray-600 mb-2">Select saved sizes:</p>
+                <div className="flex flex-wrap gap-2">
+                  {sizeOptions.map((opt) => {
+                    const isSelected = sizes.some((s) => (s.label || "").trim().toLowerCase() === (opt.label || "").trim().toLowerCase());
+                    return (
+                      <label
+                        key={opt.id}
+                        className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition ${
+                          isSelected ? "border-pink-500 bg-pink-50" : "border-gray-200 bg-white"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSizeOption(opt.label)}
+                          className="w-4 h-4 text-pink-600 rounded focus:ring-pink-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700">{opt.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-          {formData.hasSinglePrice ? (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Selling Price *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Our Price *</label>
                 <input
                   type="number"
-                  value={formData.singlePrice}
-                  onChange={(e) => setFormData({ ...formData, singlePrice: e.target.value })}
+                  value={sizeSellingPrice}
+                  onChange={(e) => setSizeSellingPrice(e.target.value)}
                   className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none transition"
-            style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
+                  style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
                   step="0.01"
                   min="0"
                   placeholder="e.g., 999"
-                  required={formData.hasSinglePrice}
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Original Price / MRP (optional)</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">MRP (optional)</label>
                 <input
                   type="number"
-                  value={formData.originalPrice}
-                  onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
+                  value={sizeMrp}
+                  onChange={(e) => setSizeMrp(e.target.value)}
                   className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none transition"
-            style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
+                  style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
                   step="0.01"
                   min="0"
-                  placeholder="e.g., 1499 (shown struck through)"
+                  placeholder="e.g., 1299"
                 />
-                <p className="text-xs text-gray-500 mt-1">Displayed as strikethrough; discount % is auto-calculated.</p>
-              </div>
-              <p className="text-xs text-gray-500">This product has a single price without size variants.</p>
-            </div>
-          ) : (
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-semibold text-gray-700">Sizes & Prices (Optional)</label>
-              </div>
-              {/* Reusable size options as checkboxes */}
-              {sizeOptions.length > 0 && (
-                <div className="mb-4">
-                  <p className="text-xs text-gray-600 mb-2">Select saved sizes (then set price/MRP below):</p>
-                  <div className="flex flex-wrap gap-2">
-                    {sizeOptions.map((opt) => {
-                      const isSelected = sizes.some((s) => (s.label || "").trim().toLowerCase() === (opt.label || "").trim().toLowerCase());
-                      return (
-                        <label
-                          key={opt.id}
-                          className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition ${
-                            isSelected ? "border-pink-500 bg-pink-50" : "border-gray-200 bg-white"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleSizeOption(opt.label)}
-                            className="w-4 h-4 text-pink-600 rounded focus:ring-pink-500"
-                          />
-                          <span className="text-sm font-medium text-gray-700">{opt.label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-              {/* Custom size: add one-off or save for future */}
-              <div className="flex gap-2 mb-4 flex-wrap">
-                <input
-                  type="text"
-                  id="custom-size-label"
-                  placeholder="Custom size"
-                  className="flex-1 min-w-[120px] px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-pink-500 transition"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const input = e.target;
-                      addCustomSize(input.value, false);
-                      input.value = "";
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const input = document.getElementById("custom-size-label");
-                    if (input) {
-                      addCustomSize(input.value, false);
-                      input.value = "";
-                    }
-                  }}
-                  className="px-4 py-2.5 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300 transition"
-                >
-                  + Add
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const input = document.getElementById("custom-size-label");
-                    if (input) {
-                      addCustomSize(input.value, true);
-                      input.value = "";
-                      toast.success("Size added and saved for future products");
-                    }
-                  }}
-                  className="px-4 py-2.5 border-2 border-pink-500 text-pink-600 rounded-lg text-sm font-semibold hover:bg-pink-50 transition"
-                >
-                  Add & save for future
-                </button>
-              </div>
-              {/* Size rows: label, selling price, MRP */}
-              <div className="space-y-3">
-                {sizes.length === 0 ? (
-                  <p className="text-sm text-gray-500 italic">No sizes added. Select from above or add a custom size.</p>
-                ) : (
-                  sizes.map((size, index) => (
-                    <div key={index} className="flex flex-wrap gap-2 items-center p-3 rounded-lg border border-gray-200 bg-gray-50/50">
-                      <span className="font-semibold text-gray-700 min-w-[4rem]">{size.label}</span>
-                      <input
-                        type="number"
-                        placeholder="Selling price"
-                        value={size.price}
-                        onChange={(e) => updateSize(index, "price", e.target.value)}
-                        className="w-28 px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-pink-500 transition text-sm"
-                        step="0.01"
-                        min="0"
-                      />
-                      <input
-                        type="number"
-                        placeholder="MRP (optional)"
-                        value={size.originalPrice ?? ""}
-                        onChange={(e) => updateSize(index, "originalPrice", e.target.value)}
-                        className="w-28 px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-pink-500 transition text-sm"
-                        step="0.01"
-                        min="0"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Stock"
-                        value={size.stock ?? ""}
-                        onChange={(e) => updateSize(index, "stock", e.target.value)}
-                        className="w-20 px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-pink-500 transition text-sm"
-                        min="0"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeSize(index)}
-                        className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-sm font-semibold"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))
-                )}
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Weight options section - for fruit/weight-based products */}
-        <div className="border-t border-gray-200 pt-6">
-          <div className="mb-4">
-            <label className="flex items-center gap-2">
+            <div className="flex gap-2 mb-4 flex-wrap">
               <input
-                type="checkbox"
-                checked={weights.length > 0}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    // Add an empty weight row when enabling
-                    setWeights([{ weight: "", price: "" }]);
-                  } else {
-                    setWeights([]);
+                type="text"
+                id="custom-size-label"
+                placeholder="Custom size"
+                className="flex-1 min-w-30 px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-pink-500 transition"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const input = e.target;
+                    addCustomSize(input.value, false);
+                    input.value = "";
                   }
                 }}
-                className="w-4 h-4 text-pink-600 rounded focus:ring-pink-500"
               />
-              <span className="text-sm font-semibold text-gray-700">Weight Variants (e.g., fruits)</span>
-            </label>
-            <p className="text-xs text-gray-500 mt-1">Add different weight options with separate prices</p>
-          </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const input = document.getElementById("custom-size-label");
+                  if (input) {
+                    addCustomSize(input.value, false);
+                    input.value = "";
+                  }
+                }}
+                className="px-4 py-2.5 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300 transition"
+              >
+                + Add
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const input = document.getElementById("custom-size-label");
+                  if (input) {
+                    addCustomSize(input.value, true);
+                    input.value = "";
+                    toast.success("Size added and saved for future products");
+                  }
+                }}
+                className="px-4 py-2.5 border-2 border-pink-500 text-pink-600 rounded-lg text-sm font-semibold hover:bg-pink-50 transition"
+              >
+                Add & save for future
+              </button>
+            </div>
 
-          {weights.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex gap-2 mb-4 flex-wrap">
-                <input
-                  type="text"
-                  id="weight-input"
-                  placeholder="e.g., 100g, 250g, 500g"
-                  className="flex-1 min-w-30 px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-pink-500 transition"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const input = e.target;
-                      if (input.value.trim()) {
-                        addCustomWeight(input.value, false);
-                        input.value = "";
-                        const lastIndex = weights.length;
-                        setTimeout(() => {
-                          const priceInput = document.querySelector(`input[data-weight-index="${lastIndex}"]`);
-                          priceInput?.focus();
-                        }, 0);
-                      }
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const input = document.getElementById("weight-input");
-                    if (input) {
-                      addCustomWeight(input.value, false);
-                      input.value = "";
-                    }
-                  }}
-                  className="px-4 py-2.5 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300 transition"
-                >
-                  + Add
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const input = document.getElementById("weight-input");
-                    if (input) {
-                      addCustomWeight(input.value, true);
-                      input.value = "";
-                      toast.success("Weight added and saved for future products");
-                    }
-                  }}
-                  className="px-4 py-2.5 border-2 border-pink-500 text-pink-600 rounded-lg text-sm font-semibold hover:bg-pink-50 transition"
-                >
-                  Add & save for future
-                </button>
-              </div>
-
-              {/* Weight rows: weight, selling price, MRP */}
-              <div className="space-y-3">
-                {weights.map((weight, index) => (
+            <div className="space-y-3">
+              {sizes.length === 0 ? (
+                <p className="text-sm text-gray-500 italic">No sizes added. Select from above or add a custom size.</p>
+              ) : (
+                sizes.map((size, index) => (
                   <div key={index} className="flex flex-wrap gap-2 items-center p-3 rounded-lg border border-gray-200 bg-gray-50/50">
-                    <input
-                      type="text"
-                      placeholder="e.g., 100g"
-                      value={weight.weight}
-                      onChange={(e) => updateWeight(index, "weight", e.target.value)}
-                      className="w-24 px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-pink-500 transition text-sm"
-                      data-weight-index={index}
-                    />
-                    <input
-                      type="number"
-                      placeholder="Selling price"
-                      value={weight.price}
-                      onChange={(e) => updateWeight(index, "price", e.target.value)}
-                      className="w-28 px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-pink-500 transition text-sm"
-                      step="0.01"
-                      min="0"
-                    />
-                    <input
-                      type="number"
-                      placeholder="MRP (optional)"
-                      value={weight.originalPrice ?? ""}
-                      onChange={(e) => updateWeight(index, "originalPrice", e.target.value)}
-                      className="w-28 px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-pink-500 transition text-sm"
-                      step="0.01"
-                      min="0"
-                    />
+                    <span className="font-semibold text-gray-700 min-w-16">{size.label}</span>
                     <input
                       type="number"
                       placeholder="Stock"
-                      value={weight.stock ?? ""}
-                      onChange={(e) => updateWeight(index, "stock", e.target.value)}
+                      value={size.stock ?? ""}
+                      onChange={(e) => updateSize(index, "stock", e.target.value)}
                       className="w-20 px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-pink-500 transition text-sm"
                       min="0"
                     />
                     <button
                       type="button"
-                      onClick={() => removeWeight(index)}
+                      onClick={() => removeSize(index)}
                       className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-sm font-semibold"
                     >
                       Remove
                     </button>
                   </div>
-                ))}
-              </div>
+                ))
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         <div className="sticky bottom-0 pt-4 pb-2 border-t" style={{ backgroundColor: "var(--background)", borderColor: "var(--border)" }}>

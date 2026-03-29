@@ -37,9 +37,7 @@ function buildProductContext(products, categories, occasions) {
     const cats = (p.categories || []).map((c) => c.name || c).join(", ");
     const occs = (p.occasions || []).map((o) => o.name || o).join(", ");
     let priceStr = "";
-    if (p.hasSinglePrice && p.singlePrice != null) {
-      priceStr = `₹${p.singlePrice}`;
-    } else if (p.sizes && p.sizes.length > 0) {
+    if (p.sizes && p.sizes.length > 0) {
       const prices = p.sizes.map((s) => s.price);
       const min = Math.min(...prices);
       const max = Math.max(...prices);
@@ -152,8 +150,6 @@ AVAILABLE_OCCASIONS: ${JSON.stringify(welcomeContext.occasions)}
         name: p.name,
         description: (p.description || "").slice(0, 200),
         images: p.images || [],
-        hasSinglePrice: p.hasSinglePrice,
-        singlePrice: p.singlePrice,
         originalPrice: p.originalPrice,
         sizes: (p.sizes || []).map((s) => ({ id: s.id, label: s.label, price: s.price, originalPrice: s.originalPrice })),
         categories: (p.categories || []).map((c) => ({ id: c?.id, name: c?.name })),
@@ -203,8 +199,6 @@ AVAILABLE_OCCASIONS: ${JSON.stringify(welcomeContext.occasions)}
     //     name: p.name,
     //     description: (p.description || "").slice(0, 200),
     //     images: p.images || [],
-    //     hasSinglePrice: p.hasSinglePrice,
-    //     singlePrice: p.singlePrice,
     //     originalPrice: p.originalPrice,
     //     sizes: (p.sizes || []).map((s) => ({ id: s.id, label: s.label, price: s.price, originalPrice: s.originalPrice })),
     //     categories: (p.categories || []).map((c) => ({ id: c?.id, name: c?.name })),

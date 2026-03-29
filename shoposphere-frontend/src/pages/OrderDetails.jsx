@@ -124,7 +124,7 @@ export default function OrderDetails() {
         if (!productRes.ok) continue;
         const product = await productRes.json();
         const sizes = product.sizes || [];
-        const size = sizes[0] ? { id: sizes[0].id, label: sizes[0].label, price: sizes[0].price } : product.hasSinglePrice ? { id: null, label: "Standard", price: product.singlePrice } : null;
+        const size = sizes[0] ? { id: sizes[0].id, label: sizes[0].label, price: sizes[0].price } : null;
         if (size && (await addToCart(product, size, item.quantity))) added += 1;
       } catch {
         // Skip product if fetch or add fails
@@ -242,7 +242,7 @@ export default function OrderDetails() {
         {order.estimatedDeliveryMinutes != null && (
           <div className="rounded-xl p-5 mb-8" style={{ background: "linear-gradient(135deg, #16a34a 0%, #059669 100%)" }}>
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center shrink-0">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
@@ -299,7 +299,7 @@ export default function OrderDetails() {
           <ul className="space-y-4">
             {order.items?.map((item, idx) => (
               <li key={idx} className="flex gap-4 py-3 border-b last:border-b-0" style={{ borderColor: "var(--border)" }}>
-                <div className="w-16 h-16 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center" style={{ background: "var(--muted)" }}>
+                <div className="w-16 h-16 rounded-lg shrink-0 overflow-hidden flex items-center justify-center" style={{ background: "var(--muted)" }}>
                   {item.image ? <img src={item.image} alt={item.name} className="w-full h-full object-cover" /> : <span className="text-xs" style={{ color: "var(--muted)" }}>—</span>}
                 </div>
                 <div className="min-w-0 flex-1">

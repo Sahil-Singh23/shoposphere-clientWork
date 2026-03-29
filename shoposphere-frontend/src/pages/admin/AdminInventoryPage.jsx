@@ -87,7 +87,6 @@ export default function AdminInventoryPage() {
       const body = {
         stock: val,
         ...(row.sizeId != null && { sizeId: row.sizeId }),
-        ...(row.selectedWeight != null && row.selectedWeight !== "" && { selectedWeight: row.selectedWeight }),
       };
       const res = await fetch(`${API}/admin/products/update-stock/${row.productId}`, {
         method: "PUT",

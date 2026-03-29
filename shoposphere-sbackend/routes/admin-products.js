@@ -5,13 +5,12 @@ import { invalidateCache } from "../utils/cache.js";
 
 const router = express.Router();
 
-/** PUT /admin/products/update-stock/:id — body { stock, sizeId?: number, selectedWeight?: string } for variant-specific stock */
+/** PUT /admin/products/update-stock/:id — body { stock, sizeId: number } for size-specific stock */
 router.put("/update-stock/:id", requireRole("admin"), async (req, res) => {
   try {
     const productId = Number(req.params.id);
     let stock = req.body?.stock;
     const sizeId = req.body?.sizeId != null ? Number(req.body.sizeId) : null;
-    const selectedWeight = typeof req.body?.selectedWeight === "string" ? req.body.selectedWeight.trim() : null;
 
     if (productId <= 0 || !Number.isInteger(productId)) {
       return res.status(400).json({ error: "Invalid product id" });
@@ -32,26 +31,6 @@ router.put("/update-stock/:id", requireRole("admin"), async (req, res) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    if (selectedWeight) {
-      let opts;
-      try {
-        opts = Array.isArray(product.weightOptions) ? [...product.weightOptions] : JSON.parse(product.weightOptions || "[]");
-      } catch {
-        return res.status(400).json({ error: "Invalid weight options for this product" });
-      }
-      const idx = opts.findIndex((o) => String(o.weight).trim() === selectedWeight);
-      if (idx === -1) {
-        return res.status(400).json({ error: `Weight "${selectedWeight}" not found for this product` });
-      }
-      opts[idx] = { ...opts[idx], stock };
-      await prisma.product.update({
-        where: { id: productId },
-        data: { weightOptions: JSON.stringify(opts) },
-      });
-      invalidateCache("/products");
-      return res.json({ id: productId, variantType: "weight", selectedWeight, stock });
-    }
-
     if (sizeId != null) {
       const size = product.sizes?.find((s) => s.id === sizeId);
       if (!size) {
@@ -65,12 +44,7 @@ router.put("/update-stock/:id", requireRole("admin"), async (req, res) => {
       return res.json({ id: productId, variantType: "size", sizeId, stock });
     }
 
-    await prisma.product.update({
-      where: { id: productId },
-      data: { stock },
-    });
-    invalidateCache("/products");
-    return res.json({ id: productId, variantType: "single", stock });
+    return res.status(400).json({ error: "sizeId is required" });
   } catch (error) {
     console.error("Update stock error:", error);
     res.status(500).json({ error: error.message || "Failed to update stock" });

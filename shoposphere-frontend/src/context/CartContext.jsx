@@ -51,10 +51,9 @@ export function CartProvider({ children }) {
     fetchCart().finally(() => setIsLoaded(true));
   }, [fetchCart]);
 
-  const addToCart = async (product, selectedSize, quantity = 1, selectedWeight = null) => {
-    // Validate: must have either weight, size, or single price
-    if (!selectedWeight && !selectedSize && !(product.hasSinglePrice && product.singlePrice)) {
-      toast.error("Please select a weight or size");
+  const addToCart = async (product, selectedSize, quantity = 1) => {
+    if (!selectedSize) {
+      toast.error("Please select a size");
       return false;
     }
 
@@ -68,7 +67,6 @@ export function CartProvider({ children }) {
     const body = JSON.stringify({
       productId: product.id,
       productSizeId,
-      selectedWeight: selectedWeight || null,
       quantity,
     });
 
@@ -174,7 +172,7 @@ export function CartProvider({ children }) {
 
   /**
    * Add a personalized fruit basket: all fruit lines + packaging fee (server validates basket + stock).
-   * @param {{ fruitBasketId: number, items: Array<{ productId: number, quantity: number, selectedWeight?: string|null, productSizeId?: number|null }> }} payload
+  * @param {{ fruitBasketId: number, items: Array<{ productId: number, quantity: number, productSizeId?: number|null }> }} payload
    */
   const addFruitBasketBundleToCart = useCallback(
     async (payload) => {

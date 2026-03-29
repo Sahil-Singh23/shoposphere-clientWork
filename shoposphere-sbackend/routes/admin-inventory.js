@@ -14,8 +14,8 @@ function getStockStatus(stock) {
 
 /**
  * GET /admin/inventory
- * Returns one row per variant: product + size, product + weight, or product (single).
- * Each row: { productId, productName, variantType: 'size'|'weight'|'single', variantLabel, sizeId?, selectedWeight?, stock, status, rowId }
+ * Returns one row per size variant.
+ * Each row: { productId, productName, variantType: 'size', variantLabel, sizeId, stock, status, rowId }
  */
 router.get("/", requireRole("admin"), async (req, res) => {
   try {
@@ -28,34 +28,6 @@ router.get("/", requireRole("admin"), async (req, res) => {
     for (const p of products) {
       const productName = p.name;
 
-      // Weight variants (fruits)
-      if (p.weightOptions) {
-        let opts;
-        try {
-          opts = Array.isArray(p.weightOptions) ? p.weightOptions : JSON.parse(p.weightOptions || "[]");
-        } catch {
-          opts = [];
-        }
-        if (opts.length > 0) {
-          for (const w of opts) {
-            const weightLabel = String(w.weight || "").trim();
-            const stock = Math.max(0, Number(w.stock ?? p.stock ?? 0));
-            list.push({
-              productId: p.id,
-              productName,
-              variantType: "weight",
-              variantLabel: weightLabel,
-              selectedWeight: weightLabel,
-              sizeId: null,
-              stock,
-              status: getStockStatus(stock),
-              rowId: `${p.id}_weight_${weightLabel}`,
-            });
-          }
-          continue;
-        }
-      }
-
       // Size variants
       if (p.sizes && p.sizes.length > 0) {
         for (const s of p.sizes) {
@@ -66,28 +38,12 @@ router.get("/", requireRole("admin"), async (req, res) => {
             variantType: "size",
             variantLabel: s.label,
             sizeId: s.id,
-            selectedWeight: null,
             stock,
             status: getStockStatus(stock),
             rowId: `${p.id}_size_${s.id}`,
           });
         }
-        continue;
       }
-
-      // Single price (no sizes, no weights)
-      const stock = Math.max(0, Number(p.stock ?? 0));
-      list.push({
-        productId: p.id,
-        productName,
-        variantType: "single",
-        variantLabel: "Single",
-        sizeId: null,
-        selectedWeight: null,
-        stock,
-        status: getStockStatus(stock),
-        rowId: `${p.id}_single`,
-      });
     }
 
     res.json(list);

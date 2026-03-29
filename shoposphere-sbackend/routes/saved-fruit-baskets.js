@@ -13,10 +13,6 @@ function parseFruitsPayload(fruits) {
     const productId = Number(f.productId);
     const quantity = Math.max(1, Number(f.quantity) || 1);
     if (!productId) return { ok: false, error: "Each fruit needs a valid productId" };
-    const selectedWeight =
-      f.selectedWeight != null && String(f.selectedWeight).trim() !== ""
-        ? String(f.selectedWeight).trim()
-        : null;
     const productSizeId =
       f.productSizeId === undefined || f.productSizeId === null || f.productSizeId === ""
         ? null
@@ -24,7 +20,7 @@ function parseFruitsPayload(fruits) {
     if (productSizeId != null && Number.isNaN(productSizeId)) {
       return { ok: false, error: "Invalid productSizeId" };
     }
-    normalized.push({ productId, quantity, selectedWeight, productSizeId });
+    normalized.push({ productId, quantity, productSizeId });
   }
   return { ok: true, fruits: normalized };
 }

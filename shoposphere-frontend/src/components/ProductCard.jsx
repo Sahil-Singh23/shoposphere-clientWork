@@ -23,32 +23,8 @@ function ProductCard({ product, compact = false }) {
     }
   }, [product?.images]);
 
-  // Get selling price and optional MRP (check weights first, then sizes, then single price)
+  // Get selling price and optional MRP from size variants.
   const getPriceInfo = () => {
-    // Check for weight-based products first
-    if (product.weightOptions) {
-      try {
-        const weightOpts = Array.isArray(product.weightOptions) ? product.weightOptions : JSON.parse(product.weightOptions);
-        if (weightOpts.length > 0) {
-          const minWeight = weightOpts.reduce((prev, curr) => {
-            const prevPrice = parseFloat(prev.price);
-            const currPrice = parseFloat(curr.price);
-            return currPrice < prevPrice ? curr : prev;
-          });
-          const selling = parseFloat(minWeight.price);
-          const mrp = minWeight.originalPrice != null ? parseFloat(minWeight.originalPrice) : null;
-          return { selling, mrp };
-        }
-      } catch {
-        // Fall through to other options
-      }
-    }
-    
-    if (product.hasSinglePrice && product.singlePrice != null) {
-      const selling = parseFloat(product.singlePrice);
-      const mrp = product.originalPrice != null && product.originalPrice !== "" ? parseFloat(product.originalPrice) : null;
-      return { selling, mrp };
-    }
     if (!product.sizes || product.sizes.length === 0) return null;
     const withMrp = product.sizes.map((s) => ({
       selling: parseFloat(s.price),
@@ -67,19 +43,8 @@ function ProductCard({ product, compact = false }) {
       ? Math.round(((displayMrp - displayPrice) / displayMrp) * 100)
       : null;
 
-  // Variant-aware stock: use per-weight or per-size stock when present
+  // Variant-aware stock: aggregate per-size stock.
   const stock = useMemo(() => {
-    if (product.weightOptions) {
-      try {
-        const opts = Array.isArray(product.weightOptions) ? product.weightOptions : JSON.parse(product.weightOptions);
-        if (opts.length) {
-          const total = opts.reduce((sum, w) => sum + Math.max(0, Number(w.stock ?? product.stock ?? 0)), 0);
-          return total;
-        }
-      } catch {
-        // ignore malformed weightOptions payload
-      }
-    }
     if (product.sizes?.length) {
       const total = product.sizes.reduce((sum, s) => sum + Math.max(0, Number(s.stock ?? 0)), 0);
       if (total > 0) return total;
@@ -115,41 +80,6 @@ function ProductCard({ product, compact = false }) {
     setIsAdding(true);
     setJustAdded(false);
     
-    // Handle weight-based products (fruits)
-    if (product.weightOptions) {
-      try {
-        const weightOpts = Array.isArray(product.weightOptions) ? product.weightOptions : JSON.parse(product.weightOptions);
-        if (weightOpts.length === 1) {
-          // Single weight option - add directly
-          const ok = await addToCart(product, null, 1, weightOpts[0].weight);
-          if (ok) {
-            setJustAdded(true);
-            setTimeout(() => setJustAdded(false), 1300);
-          }
-        } else {
-          // Multiple weight options - go to detail page
-          window.location.href = `/product/${product.id}`;
-        }
-      } catch {
-        toast.error("Error loading weight options");
-      } finally {
-        setIsAdding(false);
-      }
-      return;
-    }
-    
-    // Handle single price products
-    if (product.hasSinglePrice && product.singlePrice) {
-      const virtualSize = { id: 0, label: "Standard", price: parseFloat(product.singlePrice) };
-      const ok = await addToCart(product, virtualSize, 1);
-      if (ok) {
-        setJustAdded(true);
-        setTimeout(() => setJustAdded(false), 1300);
-      }
-      setIsAdding(false);
-      return;
-    }
-    
     if (!product.sizes || product.sizes.length === 0) {
       toast.error("This product has no sizes available");
       setIsAdding(false);
@@ -175,49 +105,6 @@ function ProductCard({ product, compact = false }) {
     setJustAdded(false);
 
     try {
-      // Weight-based products: choose the cheapest available weight.
-      if (product.weightOptions) {
-        let weightOpts = [];
-        try {
-          weightOpts = Array.isArray(product.weightOptions) ? product.weightOptions : JSON.parse(product.weightOptions || "[]");
-        } catch {
-          weightOpts = [];
-        }
-
-        if (Array.isArray(weightOpts) && weightOpts.length) {
-          const inStock = weightOpts.filter((w) => Number(w.stock ?? product.stock ?? 0) > 0);
-          const candidates = inStock.length ? inStock : weightOpts;
-
-          const chosen = candidates.reduce((min, w) => {
-            const wPrice = Number(w.price ?? Number.MAX_SAFE_INTEGER);
-            return wPrice < min.price ? { ...w, price: wPrice } : min;
-          }, { price: Number.MAX_SAFE_INTEGER });
-
-          const weightValue = chosen.weight ?? chosen?.weightValue ?? null;
-          if (weightValue != null && chosen?.price !== Number.MAX_SAFE_INTEGER) {
-            const ok = await addToCart(product, null, 1, weightValue);
-            if (ok) {
-              setJustAdded(true);
-              setTimeout(() => setJustAdded(false), 1300);
-            }
-            return;
-          }
-        }
-        window.location.href = `/product/${product.id}`;
-        return;
-      }
-
-      // Single-price products: add directly.
-      if (product.hasSinglePrice && product.singlePrice) {
-        const virtualSize = { id: 0, label: "Standard", price: parseFloat(product.singlePrice) };
-        const ok = await addToCart(product, virtualSize, 1);
-        if (ok) {
-          setJustAdded(true);
-          setTimeout(() => setJustAdded(false), 1300);
-        }
-        return;
-      }
-
       // Size-based products: choose the cheapest available size.
       if (product.sizes?.length) {
         const sizes = Array.isArray(product.sizes) ? product.sizes : [];
@@ -248,7 +135,7 @@ function ProductCard({ product, compact = false }) {
 
   const handleWhatsAppOrder = () => {
     const phone = "917976948872";
-    const priceText = displayPrice != null ? `Price: ₹${Number(displayPrice).toLocaleString("en-IN")}` : "Price: varies by weight/size";
+    const priceText = displayPrice != null ? `Price: ₹${Number(displayPrice).toLocaleString("en-IN")}` : "Price: varies by size";
     const msg = `Hi! I want to order ${product?.name || "this product"}. ${priceText}. Please share available options and delivery details.`;
 
     // Store last product context for the floating WhatsApp button.
@@ -274,7 +161,7 @@ function ProductCard({ product, compact = false }) {
         {/* Basket frame */}
         <div
           className={`relative flex items-center justify-center cursor-pointer ${
-            compact ? "h-20 w-20 rounded-[var(--radius-md)] p-1.5" : "h-64 rounded-[var(--radius-lg)] p-1.5"
+            compact ? "h-20 w-20 rounded-md p-1.5" : "h-64 rounded-lg p-1.5"
           }`}
           style={{
             background: `linear-gradient(145deg, rgba(107,62,38,0.95) 0%, rgba(107,62,38,0.75) 45%, rgba(244,196,48,0.14) 100%)`,
@@ -284,7 +171,7 @@ function ProductCard({ product, compact = false }) {
           {/* Weave hint */}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-[0.5px] rounded-[var(--radius-lg)] opacity-20"
+            className="pointer-events-none absolute inset-[0.5px] rounded-lg opacity-20"
             style={{
               backgroundImage:
                 "repeating-linear-gradient(90deg, rgba(245,230,211,0.55) 0 2px, rgba(0,0,0,0) 2px 8px), repeating-linear-gradient(0deg, rgba(245,230,211,0.35) 0 2px, rgba(0,0,0,0) 2px 10px)",
@@ -294,7 +181,7 @@ function ProductCard({ product, compact = false }) {
 
           {/* Basket liner */}
           <div
-            className={`relative overflow-hidden w-full h-full rounded-[var(--radius-md)]`}
+            className={`relative overflow-hidden w-full h-full rounded-md`}
             style={{
               backgroundColor: "var(--secondary)",
               boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.05)",
@@ -473,8 +360,7 @@ function ProductCard({ product, compact = false }) {
           <div className={compact ? "mb-1.5 flex items-baseline gap-2" : "mb-3 flex flex-wrap items-baseline gap-2"}>
             <span className={compact ? "text-sm font-bold" : "text-lg font-bold"} style={{ color: 'var(--foreground)' }}>
               ₹{Number(displayPrice).toLocaleString('en-IN')}
-              {((!product.hasSinglePrice && product.sizes && product.sizes.length > 1) ||
-                (product.weightOptions && (Array.isArray(product.weightOptions) ? product.weightOptions : []).length > 1)) && (
+              {(product.sizes && product.sizes.length > 1) && (
                 <span className="text-sm font-normal ml-1 text-design-muted"></span>
               )}
             </span>
@@ -497,7 +383,7 @@ function ProductCard({ product, compact = false }) {
         <button
           onClick={handleAddToCart}
           disabled={outOfStock || isAdding}
-          className={`rounded-lg font-semibold transition-all duration-300 active:scale-[0.99] min-h-[44px] text-sm md:text-sm flex items-center justify-center gap-2 ${
+          className={`rounded-lg font-semibold transition-all duration-300 active:scale-[0.99] min-h-11 text-sm md:text-sm flex items-center justify-center gap-2 ${
             compact ? "px-3 py-1.5" : "w-full py-2.5"
           } ${outOfStock ? "opacity-60 cursor-not-allowed" : ""}`}
           style={{
@@ -546,7 +432,7 @@ function ProductCard({ product, compact = false }) {
 export function ProductCardSkeleton({ compact = false }) {
   return (
     <div className={`card-soft overflow-hidden group relative ${compact ? "flex gap-3" : ""}`}>
-      <div className={`${compact ? "h-20 w-20 rounded-[var(--radius-md)] p-1.5" : "h-64 rounded-[var(--radius-lg)] p-1.5"} flex items-center justify-center`}>
+      <div className={`${compact ? "h-20 w-20 rounded-md p-1.5" : "h-64 rounded-lg p-1.5"} flex items-center justify-center`}>
         <div className="w-full h-full animate-pulse" style={{ background: "var(--muted)", borderRadius: "inherit" }} />
       </div>
 

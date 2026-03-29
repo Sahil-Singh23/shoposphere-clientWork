@@ -4,14 +4,10 @@ import prisma from "../prisma.js";
  * Calculate price range (±20%)
  */
 export function getPriceRange(product) {
-  let basePrice;
-  if (product.hasSinglePrice && product.singlePrice) {
-    basePrice = parseFloat(product.singlePrice);
-  } else if (product.sizes && product.sizes.length > 0) {
+  let basePrice = 0;
+  if (product.sizes && product.sizes.length > 0) {
     const prices = product.sizes.map((s) => parseFloat(s.price));
     basePrice = Math.min(...prices);
-  } else {
-    basePrice = 0;
   }
   const tolerance = basePrice * 0.2;
   return {
@@ -25,9 +21,6 @@ export function getPriceRange(product) {
  * Get product price (for filtering)
  */
 export function getProductPrice(product) {
-  if (product.hasSinglePrice && product.singlePrice) {
-    return parseFloat(product.singlePrice);
-  }
   if (product.sizes && product.sizes.length > 0) {
     return Math.min(...product.sizes.map((s) => parseFloat(s.price)));
   }

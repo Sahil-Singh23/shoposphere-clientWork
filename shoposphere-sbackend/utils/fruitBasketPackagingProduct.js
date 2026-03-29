@@ -26,9 +26,16 @@ export async function getFruitBasketPackagingProductId() {
             "System line item for custom fruit basket packaging fee. Do not delete or use as a regular product.",
           images: "[]",
           keywords: "[]",
-          hasSinglePrice: true,
-          singlePrice: 0,
           stock: 999999,
+          sizes: {
+            create: [
+              {
+                label: "Packaging",
+                price: 0,
+                stock: 999999,
+              },
+            ],
+          },
         },
         select: { id: true },
       });
