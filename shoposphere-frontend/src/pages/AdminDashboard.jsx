@@ -12,12 +12,10 @@ import ReelForm from "../components/admin/ReelForm";
 import ReelList from "../components/admin/ReelList";
 import OccasionForm from "../components/admin/OccasionForm";
 import OccasionList from "../components/admin/OccasionList";
-import SeasonalForm from "../components/admin/SeasonalForm";
-import SeasonalList from "../components/admin/SeasonalList";
 import BannerForm from "../components/admin/BannerForm";
 import BannerList from "../components/admin/BannerList";
 
-const DASHBOARD_TABS = ["products", "categories", "seasonal", "occasions", "banners", "reels", "messages"];
+const DASHBOARD_TABS = ["products", "categories", "occasions", "banners", "reels", "messages"];
 
 export default function AdminDashboard() {
   const { logout, user } = useAuth();
@@ -48,8 +46,6 @@ export default function AdminDashboard() {
   const [editingOccasion, setEditingOccasion] = useState(null);
   const [editingReel, setEditingReel] = useState(null);
   const [editingBanner, setEditingBanner] = useState(null);
-  const [seasonals, setSeasonals] = useState([]);
-  const [editingSeasonal, setEditingSeasonal] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -103,15 +99,6 @@ export default function AdminDashboard() {
         if (res.ok) {
           const data = await res.json();
           setCategories(data);
-        }
-      } else if (activeTab === "seasonal") {
-        const res = await fetch(`${API}/seasonal/all`, { headers });
-        if (res.ok) {
-          const data = await res.json();
-          setSeasonals(Array.isArray(data) ? data : []);
-        } else if (res.status === 401) {
-          toast.error("Session expired. Please login again.");
-          logout();
         }
       } else if (activeTab === "occasions") {
         const res = await fetch(`${API}/occasions/all`, { headers });
@@ -173,11 +160,6 @@ export default function AdminDashboard() {
     loadData();
   };
 
-  const handleSeasonalSave = () => {
-    setEditingSeasonal(null);
-    loadData();
-  };
-
   const handleReelSave = () => {
     setEditingReel(null);
     loadData();
@@ -191,7 +173,6 @@ export default function AdminDashboard() {
   const tabs = [
     { id: "products", label: "All Fruits", icon: null },
     { id: "categories", label: "Categories", icon: null },
-    { id: "seasonal", label: "Seasonal", icon: null },
     { id: "occasions", label: "Exotic", icon: null },
     { id: "banners", label: "Banners", icon: null },
     { id: "reels", label: "Reels", icon: null },
@@ -206,7 +187,6 @@ export default function AdminDashboard() {
     setActiveTab(tabId);
     setEditingProduct(null);
     setEditingCategory(null);
-    setEditingSeasonal(null);
     setEditingOccasion(null);
     setEditingReel(null);
     setEditingBanner(null);
@@ -284,21 +264,6 @@ export default function AdminDashboard() {
                 <CategoryList
                   categories={categories}
                   onEdit={setEditingCategory}
-                  onDelete={loadData}
-                />
-              </div>
-            )}
-
-            {activeTab === "seasonal" && (
-              <div>
-                <SeasonalForm
-                  seasonal={editingSeasonal}
-                  onSave={handleSeasonalSave}
-                  onCancel={() => setEditingSeasonal(null)}
-                />
-                <SeasonalList
-                  seasonals={seasonals}
-                  onEdit={setEditingSeasonal}
                   onDelete={loadData}
                 />
               </div>

@@ -57,7 +57,6 @@ export default function Navbar() {
   const navItems = [
     { path: "/", label: "Home" },
     { path: "/categories", label: "Categories" },
-    { path: "/seasonal", label: "Seasonal" },
     { path: "/organic", label: "Organic" },
     { path: "/gift-boxes", label: "About" },
     { path: "/blog", label: "Contact" },

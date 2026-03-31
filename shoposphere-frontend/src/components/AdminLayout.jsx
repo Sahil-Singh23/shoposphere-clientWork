@@ -4,7 +4,6 @@ import { useAuth } from "../context/AuthContext";
 const SIDEBAR_ITEMS = [
   { id: "products", label: "All Fruits", path: "/admin/dashboard", search: "" },
   { id: "categories", label: "Categories", path: "/admin/dashboard", search: "?tab=categories" },
-  { id: "seasonal", label: "Seasonal", path: "/admin/dashboard", search: "?tab=seasonal" },
   { id: "occasions", label: "Exotic", path: "/admin/dashboard", search: "?tab=occasions" },
   { id: "banners", label: "Banners", path: "/admin/dashboard", search: "?tab=banners" },
   { id: "reels", label: "Reels", path: "/admin/dashboard", search: "?tab=reels" },

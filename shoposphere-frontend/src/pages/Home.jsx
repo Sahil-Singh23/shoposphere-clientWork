@@ -309,7 +309,7 @@ export default function Home() {
                   </div>
 
                   <p className="text-xs md:text-sm max-w-xs md:max-w-md leading-relaxed opacity-80" style={{ color: "var(--text-muted)" }}>
-                    30-minute delivery on handpicked seasonal fruits.
+                    30-minute delivery on handpicked fresh fruits.
                   </p>
                 </div>
 
@@ -607,7 +607,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Shop By Occasion Section (Seasonal Picks) */}
+      {/* Shop By Occasion Section */}
       {occasions.length > 0 ? (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between mb-8">
