@@ -1,202 +1,212 @@
 export default function About() {
-    return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--background)" }}>
-      {/* Hero Section */}
-      <div className="py-20" style={{ background: "var(--gradient-warm)" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h1 className="text-2xl font-bold mb-6" style={{ color: "var(--foreground)" }}>
-              Leading Gift Distribution Partner
-            </h1>
-            <p className="text-xl max-w-3xl mx-auto leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-              With years of experience in gift distribution, we connect customers with premium branded products, 
-              ensuring quality, authenticity, and competitive pricing for every special occasion.
-            </p>
-          </div>
-        </div>
-      </div>
+  const reels = [
+    {
+      tag: "Process",
+      title: "The Sourcing Trip",
+      img: "https://lh3.googleusercontent.com/aida-public/AB6AXuBwjegQkRIw194MMJd_-9B7z9eflpoXmhCS98hK79FGyNalhZ--tWhKb8YlEKbuKIqCCBpDyoz2WczDFCEvJS148WAfF5jdelOiZEXyNKcsLttwSZpPBhb9e6lcs2jJv1RO2jYc0rc-Ru5pc74n4wfYrfKgBwtoTkyf3P2ZsuXNonvl9QsQRjWZDw0X_DE0fSP3OfWmbiYd5sPJzhG-5JNcHLaBSS18Doeinhr-h2n-_mwByjiIW20rOmk39IjrbwNl2FXwzJdvFzA",
+      alt: "Cinematic shot of a minimalist design studio with clean white walls and organized craft tools on a wooden desk.",
+    },
+    {
+      tag: "Community",
+      title: "The Loft Opening",
+      img: "https://lh3.googleusercontent.com/aida-public/AB6AXuAWsIMU_cXzCghhSWrGhB4bLQ9ibHLyrJ8gaGk6Tp7sKQThYMrhA18OkpGqF5BR2xcJpNz-f1iHg7W3vb1QmAXfxCMkoZCnYbpJbDC5KfasQEIQOBX2pdT42JOxQkei24rtuEl43S5wPPK3vU_CzGfJ84i51kjAmDq3M8tExLbBt8AP5no2AJzG2l77c8y0HY6QPBnCf3_Pwrj7PhYSdHf8o4RJl6l62GFDinB4c9-R9M2lGqmsCPolJNOKLYcC6S89yaH4e_icuEw",
+      alt: "Candid moment of a diverse team collaborating around a large table with coffee and architectural blueprints.",
+    },
+    {
+      tag: "Philosophy",
+      title: "The Mono Mindset",
+      img: "https://lh3.googleusercontent.com/aida-public/AB6AXuDFvUUafFGCd-7C2P934aKDGidPonNo0PRYA_KfTq3lszVP1DGWqJX-IsKRv_fQBWj-8O-hxTP56yw8FD3h6MiljEPrvjFmU0SHZAr_C8jl_EtkdLBDxDk3ZUyC1LLvGOlWrYnTHoRheD-wadDy4Ed88SHBdN_HD_jIX6Q8vHlqUhLgUpLmVx1Dozzi2FGrk-7RIMRkR0CAfS9R-TvtbRDePRDstYGdqCUJGvrPt4ARCwXis3EZ4X-go9_cW6yMr0tGD8p2lO-p0gw",
+      alt: "Detailed close-up of high-quality linen fabric being measured on a sleek black workstation.",
+    },
+    {
+      tag: "Curation",
+      title: "Summer Selection",
+      img: "https://lh3.googleusercontent.com/aida-public/AB6AXuBvv5ZnX5Qap-C3-qhFE-MllRKzBd3aU5X6_jy1B8TCIS-H0apTFcdDPRxowzL4UQi8VrEYylawTxGCuZ0Bz6XRTsdCB2xXRkTP55IeVUMLxUFzTCsxdGzHZ3m7zIGD9xnA42O3wdxirOXo-L9HMzny1BciDFRetFZNpNoNRACzPXSYqld0X2BZiawwBwUKDH-xsYZ1PcyolXlWdGn3HdgOO9XQE3gOSpp6-GrCF3TZYEnd1TnCzzrMLKwPt5GAAB2LqYuCqbQxM-Q",
+      alt: "Artistic soft focus shot of minimalist home decor objects on a light grey textured background.",
+    },
+  ];
 
-      {/* Leadership Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-2xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Leadership</h2>
-          <p className="text-lg" style={{ color: "var(--foreground-muted)" }}>
-            Meet Our Director
-          </p>
-        </div>
-        
-        <div className="rounded-2xl shadow-lg p-8 md:p-12 max-w-4xl mx-auto" style={{ backgroundColor: "var(--card-white)" }}>
-          <p className="text-lg mb-6 leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-            Under visionary leadership, GiftChoice has grown from a small gift shop to one of the most trusted names 
-            in gift distribution. Our director brings decades of experience in the gift business and maintains strong 
-            relationships with manufacturers worldwide.
-          </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="text-center p-4 rounded-lg" style={{ backgroundColor: "var(--muted)" }}>
-              <div className="text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>20+</div>
-              <div className="text-sm" style={{ color: "var(--foreground-muted)" }}>years in gift distribution</div>
-            </div>
-            <div className="text-center p-4 rounded-lg" style={{ backgroundColor: "var(--muted)" }}>
-              <div className="text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>150+</div>
-              <div className="text-sm" style={{ color: "var(--foreground-muted)" }}>Direct partnerships with factories</div>
-            </div>
-            <div className="text-center p-4 rounded-lg" style={{ backgroundColor: "var(--muted)" }}>
-              <div className="text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>100%</div>
-              <div className="text-sm" style={{ color: "var(--foreground-muted)" }}>Committed to quality</div>
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: "var(--page-products-bg)" }}>
+      <main className="pt-10 sm:pt-14 pb-24">
+        {/* Hero Header */}
+        <section className="max-w-screen-2xl mx-auto px-6 md:px-24 mb-14 sm:mb-20">
+          <span className="text-xs uppercase tracking-[0.2em] text-muted mb-4 block">The Narrative</span>
+          <h1 className="font-display font-semibold text-4xl sm:text-5xl md:text-7xl tracking-tight leading-none text-design-foreground max-w-4xl">
+            The Face of Shoposphere
+          </h1>
+        </section>
+
+        {/* Founder Profile */}
+        <section className="max-w-screen-2xl mx-auto px-6 md:px-24 mb-20 sm:mb-32 grid grid-cols-1 md:grid-cols-12 gap-8 items-end">
+          <div className="md:col-span-7">
+            <div className="relative overflow-hidden rounded-2xl shadow-[0_20px_40px_rgba(26,28,28,0.10)] aspect-[4/5] bg-card">
+              <img
+                alt="Yash Jhanwar Founder Portrait"
+                className="w-full h-full object-cover"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCfzA_qLk1n47deNkKIBV1aO-jrZH6r2EO2rnTfg9n2j_xmsYQjAOe6O_2kI00-mhpn8LXcJjX8S1OPONLysTds_xEveX4uaFPhTgzNAJFKAqnXRb79NzGAz03NaVmARJe_mZX93hIM1Ji7c1pyWb3vKVNiJx05gIubue9UjhpPC2S-BLvUr2OsDyn6uBdKuCCaeBScUcBSxf24hbDv-bSVyJkHNh0_FVkt69ETL-7JC4muVQYkFsAlkCII8_BieKnXJIdYa2Unao0"
+              />
             </div>
           </div>
 
-          <div className="text-center p-8 rounded-xl" style={{ backgroundColor: "var(--muted)" }}>
-            <div className="text-2xl mb-4">👤</div>
-            <h3 className="text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>FOUNDER & MANAGING DIRECTOR</h3>
-            <p className="text-lg italic mb-4" style={{ color: "var(--foreground-muted)" }}>
-              "Our mission is to bridge the gap between manufacturers and customers, providing authentic products 
-              at unbeatable prices for every special moment."
-            </p>
-          </div>
-        </div>
-      </div>
+          <div className="md:col-span-5 pb-2 sm:pb-6 md:pl-10">
+            <div className="space-y-6">
+              <div>
+                <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-design-foreground">
+                  Yash Jhanwar
+                </h2>
+                <p className="text-base sm:text-lg text-muted">Founder &amp; Creative Director</p>
+              </div>
 
-      {/* Mission & Vision */}
-      <div className="py-16" style={{ backgroundColor: "var(--background)" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="rounded-xl shadow-lg p-8" style={{ backgroundColor: "var(--card-white)" }}>
-              <h3 className="text-xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Our Mission</h3>
-              <p className="text-lg leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-                To provide customers with direct access to premium branded products at competitive prices, 
-                eliminating middlemen and ensuring maximum value. We strive to build long-term relationships 
-                based on trust, quality, and competitive pricing for every special occasion.
+              <p className="text-base sm:text-lg leading-relaxed text-muted">
+                “Shoposphere was born out of a desire to strip away the noise of modern commerce. We believe that
+                what you surround yourself with should reflect a quiet confidence and an uncompromising eye for
+                detail.”
               </p>
-            </div>
-            <div className="rounded-xl shadow-lg p-8" style={{ backgroundColor: "var(--card-white)" }}>
-              <h3 className="text-xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Our Vision</h3>
-              <p className="text-lg leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-                To become the leading gift distribution platform, connecting thousands of customers with 
-                authentic branded products. We envision a future where every customer, regardless of occasion, 
-                has access to premium products at factory-direct prices.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Achievements */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-2xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Our Achievements</h2>
-          <p className="text-lg" style={{ color: "var(--foreground-muted)" }}>
-            Numbers that reflect our commitment to excellence and customer satisfaction
-          </p>
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div className="text-center p-6 rounded-xl shadow-md" style={{ backgroundColor: "var(--muted)" }}>
-            <div className="text-2xl font-bold mb-2" style={{ color: "var(--foreground)" }}>500+</div>
-            <div className="text-sm font-semibold mb-1" style={{ color: "var(--foreground)" }}>Brand Partners</div>
-            <div className="text-xs" style={{ color: "var(--foreground-muted)" }}>Premium brands worldwide</div>
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  className="rounded-full px-7 py-3 text-sm font-semibold tracking-wide active:scale-95"
+                  style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
+                >
+                  FOLLOW THE JOURNEY
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="text-center p-6 rounded-xl shadow-md" style={{ backgroundColor: "var(--muted)" }}>
-            <div className="text-2xl font-bold mb-2" style={{ color: "var(--foreground)" }}>10K+</div>
-            <div className="text-sm font-semibold mb-1" style={{ color: "var(--foreground)" }}>Orders Fulfilled</div>
-            <div className="text-xs" style={{ color: "var(--foreground-muted)" }}>Successful deliveries</div>
-          </div>
-          <div className="text-center p-6 rounded-xl shadow-md" style={{ backgroundColor: "var(--muted)" }}>
-            <div className="text-2xl font-bold mb-2" style={{ color: "var(--foreground)" }}>150+</div>
-            <div className="text-sm font-semibold mb-1" style={{ color: "var(--foreground)" }}>Factory Partners</div>
-            <div className="text-xs" style={{ color: "var(--foreground-muted)" }}>Direct manufacturing sources</div>
-          </div>
-          <div className="text-center p-6 rounded-xl shadow-md" style={{ backgroundColor: "var(--muted)" }}>
-            <div className="text-2xl font-bold mb-2" style={{ color: "var(--foreground)" }}>98%</div>
-            <div className="text-sm font-semibold mb-1" style={{ color: "var(--foreground)" }}>Client Satisfaction</div>
-            <div className="text-xs" style={{ color: "var(--foreground-muted)" }}>Happy customers</div>
-          </div>
-        </div>
-      </div>
+        </section>
 
-      {/* Core Values */}
-      <div className="py-16" style={{ backgroundColor: "var(--background)" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Our Core Values</h2>
-            <p className="text-lg" style={{ color: "var(--foreground-muted)" }}>
-              The principles that guide our business and define our commitment to customers
-            </p>
+        {/* Built on Principles */}
+        <section className="max-w-screen-2xl mx-auto px-6 md:px-24 mb-20 sm:mb-32">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10 sm:mb-12">
+            <h3 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-design-foreground">
+              Built on Principles
+            </h3>
+            <p className="text-muted max-w-xs text-sm">Curated with precision, delivered with intent.</p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-              <div className="text-2xl mb-4">✨</div>
-              <h3 className="text-xl font-bold mb-3" style={{ color: "var(--foreground)" }}>Quality Assurance</h3>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-                Every product undergoes strict quality checks before reaching our customers
-              </p>
-            </div>
-            <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-              <div className="text-2xl mb-4">💰</div>
-              <h3 className="text-xl font-bold mb-3" style={{ color: "var(--foreground)" }}>Competitive Pricing</h3>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-                Direct factory partnerships ensure the best prices in the market
-              </p>
-            </div>
-            <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--muted)" }}>
-                <svg className="w-8 h-8" style={{ color: 'oklch(40% .02 340)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-8 sm:p-10 bg-card rounded-2xl shadow-[0_20px_40px_rgba(26,28,28,0.08)] transition-transform hover:scale-[1.02]">
+              <div className="h-12 w-12 rounded-2xl grid place-items-center mb-6" style={{ backgroundColor: "var(--muted)" }}>
+                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" style={{ color: "var(--foreground)" }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3l1.7 5.3H19l-4.3 3.1L16.4 17 12 13.9 7.6 17l1.7-5.6L5 8.3h5.3L12 3z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold mb-3" style={{ color: "var(--foreground)" }}>Customer First</h3>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-                Dedicated support team to help you with all your gift requirements
+              <h4 className="font-display text-lg font-semibold mb-3">Curated Quality</h4>
+              <p className="text-muted text-sm leading-relaxed">
+                We source products that pass a rigorous vetting process, ensuring that every piece in our gallery is an
+                investment in longevity.
               </p>
             </div>
-            <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--muted)" }}>
-                <svg className="w-8 h-8" style={{ color: 'oklch(40% .02 340)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+
+            <div
+              className="p-8 sm:p-10 rounded-2xl shadow-[0_20px_40px_rgba(26,28,28,0.10)] transition-transform hover:scale-[1.02]"
+              style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
+            >
+              <div className="h-12 w-12 rounded-2xl grid place-items-center mb-6" style={{ backgroundColor: "rgba(255,255,255,0.14)" }}>
+                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 21h18M7 21V9l5-5 5 5v12" />
                 </svg>
               </div>
-              <h3 className="text-xl font-bold mb-3" style={{ color: "var(--foreground)" }}>Trusted Partner</h3>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-                Years of experience in gift business with proven track record
+              <h4 className="font-display text-lg font-semibold mb-3">Minimalist Ethos</h4>
+              <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.75)" }}>
+                Form follows function. Our design language is rooted in the belief that simplicity is the ultimate form of
+                sophistication.
+              </p>
+            </div>
+
+            <div className="p-8 sm:p-10 bg-card rounded-2xl shadow-[0_20px_40px_rgba(26,28,28,0.08)] transition-transform hover:scale-[1.02]">
+              <div className="h-12 w-12 rounded-2xl grid place-items-center mb-6" style={{ backgroundColor: "var(--muted)" }}>
+                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" style={{ color: "var(--foreground)" }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a4 4 0 00-4-4h-1M7 20H2v-2a4 4 0 014-4h1m10-3a4 4 0 10-8 0 4 4 0 008 0zm6 0a3 3 0 10-6 0 3 3 0 006 0zM7 10a3 3 0 10-6 0 3 3 0 006 0z" />
+                </svg>
+              </div>
+              <h4 className="font-display text-lg font-semibold mb-3">Community Driven</h4>
+              <p className="text-muted text-sm leading-relaxed">
+                Shoposphere isn’t just a store; it’s a collective of like-minded individuals who value the intersection of
+                art and utility.
               </p>
             </div>
           </div>
-        </div>
-      </div>
+        </section>
 
-      {/* Why Choose Us */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-2xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Why Choose GiftChoice</h2>
-          <p className="text-lg" style={{ color: "var(--foreground-muted)" }}>
-            We offer unique advantages that set us apart in the gift distribution industry
-          </p>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="rounded-xl shadow-lg p-8" style={{ backgroundColor: "var(--card-white)" }}>
-            <h3 className="text-xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Direct Factory Connections</h3>
-            <p className="leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-              We work directly with manufacturers, eliminating middlemen and ensuring authentic products at the best prices.
-            </p>
+        {/* Our Story in Motion */}
+        <section className="mb-20 sm:mb-32">
+          <div className="max-w-screen-2xl mx-auto px-6 md:px-24 mb-8 sm:mb-12">
+            <h3 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight mb-2 text-design-foreground">
+              Our Story in Motion
+            </h3>
+            <p className="text-muted">Behind the scenes at the Loft.</p>
           </div>
-          <div className="rounded-xl shadow-lg p-8" style={{ backgroundColor: "var(--card-white)" }}>
-            <h3 className="text-xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Quality Guarantee</h3>
-            <p className="leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-              Every product undergoes strict quality checks and comes with authenticity guarantee from our trusted partners.
-            </p>
+
+          <div className="flex overflow-x-auto scrollbar-hide gap-5 sm:gap-6 px-6 md:px-24 pb-4 snap-x snap-mandatory">
+            {reels.map((r) => (
+              <div
+                key={r.title}
+                className="flex-none w-64 sm:w-72 aspect-[9/16] rounded-2xl overflow-hidden relative snap-start group cursor-pointer"
+                style={{ backgroundColor: "var(--muted)" }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={() => {}}
+              >
+                <img
+                  alt={r.alt}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  src={r.img}
+                  loading="lazy"
+                />
+
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-5 sm:p-6">
+                  <div className="text-white">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest mb-1 opacity-80">{r.tag}</p>
+                    <p className="font-semibold">{r.title}</p>
+                  </div>
+                </div>
+
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="bg-white/20 backdrop-blur-md rounded-full p-4">
+                    <svg viewBox="0 0 24 24" className="h-10 w-10 text-white fill-current">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="rounded-xl shadow-lg p-8" style={{ backgroundColor: "var(--card-white)" }}>
-            <h3 className="text-xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Dedicated Support</h3>
-            <p className="leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
-              Our experienced team provides personalized support to help you find the right products for every occasion.
-            </p>
+        </section>
+
+        {/* Newsletter */}
+        <section className="max-w-screen-2xl mx-auto px-6 md:px-24 pb-4">
+          <div className="rounded-2xl p-8 sm:p-12 md:p-20 text-center" style={{ backgroundColor: "var(--muted)" }}>
+            <h3 className="font-display text-2xl sm:text-3xl md:text-5xl font-semibold tracking-tight mb-7 text-design-foreground">
+              Join the curated movement.
+            </h3>
+            <form
+              className="max-w-md mx-auto flex flex-col sm:flex-row gap-3"
+              onSubmit={(e) => e.preventDefault()}
+            >
+              <input
+                className="flex-1 rounded-full px-6 py-4 border focus:outline-none focus:ring-2"
+                style={{
+                  backgroundColor: "var(--card-white)",
+                  borderColor: "transparent",
+                  boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.06)",
+                }}
+                placeholder="Email Address"
+                type="email"
+              />
+              <button
+                type="submit"
+                className="rounded-full px-8 py-4 font-semibold active:scale-95"
+                style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
+              >
+                JOIN
+              </button>
+            </form>
           </div>
-        </div>
-      </div>
-      </div>
-    );
-  }
-  
+        </section>
+      </main>
+    </div>
+  );
+}

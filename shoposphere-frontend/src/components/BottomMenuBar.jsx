@@ -16,29 +16,13 @@ const items = [
     ),
   },
   {
-    key: "categories",
-    label: "Categories",
-    to: "/categories",
-    isActive: (pathname) => pathname === "/categories" || pathname.startsWith("/category/"),
+    key: "search",
+    label: "Search",
+    to: "/search",
+    isActive: (pathname) => pathname === "/search",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-        <rect x="4" y="4" width="6" height="6" rx="1.2" strokeWidth={1.8} />
-        <rect x="14" y="4" width="6" height="6" rx="1.2" strokeWidth={1.8} />
-        <rect x="4" y="14" width="6" height="6" rx="1.2" strokeWidth={1.8} />
-        <rect x="14" y="14" width="6" height="6" rx="1.2" strokeWidth={1.8} />
-      </svg>
-    ),
-  },
-  {
-    key: "profile",
-    label: "Profile",
-    toAuth: "/profile/orders",
-    toGuest: "/login",
-    isActive: (pathname) => pathname.startsWith("/profile") || pathname === "/login" || pathname === "/signup",
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-        <circle cx="12" cy="8" r="3.2" strokeWidth={1.9} />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.9} d="M5 20c1.8-3.4 4.2-5.2 7-5.2S17.2 16.6 19 20" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       </svg>
     ),
   },
@@ -55,6 +39,30 @@ const items = [
       </svg>
     ),
   },
+  {
+    key: "wishlist",
+    label: "Wishlist",
+    to: "/profile/wishlist",
+    isActive: (pathname) => pathname === "/profile/wishlist",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.9} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+      </svg>
+    ),
+  },
+  {
+    key: "profile",
+    label: "Profile",
+    toAuth: "/profile/orders",
+    toGuest: "/login",
+    isActive: (pathname) => pathname.startsWith("/profile") || pathname === "/login" || pathname === "/signup",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <circle cx="12" cy="8" r="3.2" strokeWidth={1.9} />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.9} d="M5 20c1.8-3.4 4.2-5.2 7-5.2S17.2 16.6 19 20" />
+      </svg>
+    ),
+  },
 ];
 
 export default function BottomMenuBar() {
@@ -67,44 +75,59 @@ export default function BottomMenuBar() {
     <nav
       className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t backdrop-blur-md"
       style={{
-        borderColor: "rgba(133, 92, 61, 0.18)",
-        background: "linear-gradient(180deg, rgba(255, 252, 246, 0.95) 0%, rgba(245, 230, 211, 0.94) 100%)",
-        boxShadow: "0 -8px 26px rgba(74, 55, 40, 0.12)",
+        borderColor: "rgba(0, 0, 0, 0.06)",
+        background: "rgba(255, 255, 255, 0.78)",
+        boxShadow: "0 -10px 34px rgba(0,0,0,0.14)",
       }}
       aria-label="Bottom menu"
     >
-      <div className="grid grid-cols-4 h-[68px] px-2">
+      <div className="grid grid-cols-5 h-[72px] px-2">
         {items.map((item) => {
           const active = item.isActive(location.pathname);
           const to = item.key === "profile" ? (isAuthenticated ? item.toAuth : item.toGuest) : item.to;
+          const isCenter = item.key === "cart";
 
           return (
             <Link
               key={item.key}
               to={to}
               className="relative flex flex-col items-center justify-center gap-1 rounded-xl transition-all"
-              style={{ color: active ? "var(--primary)" : "var(--foreground-muted)" }}
+              style={{ color: active ? "rgba(0,0,0,0.86)" : "rgba(0,0,0,0.48)" }}
               aria-current={active ? "page" : undefined}
             >
-              <div className="relative">
+              <div
+                className="relative grid place-items-center"
+                style={{
+                  height: isCenter ? 44 : 36,
+                  width: isCenter ? 44 : 36,
+                  borderRadius: 999,
+                  backgroundColor: isCenter ? "rgba(0,0,0,0.86)" : "transparent",
+                  color: isCenter ? "white" : undefined,
+                  boxShadow: isCenter ? "0 18px 34px rgba(0,0,0,0.22)" : "none",
+                  transform: isCenter ? "translateY(-10px)" : "none",
+                }}
+              >
                 {item.icon}
                 {item.key === "cart" && cartCount > 0 && (
                   <span
-                    className="absolute -top-2 -right-3 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center"
+                    className="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center"
                     style={{
-                      backgroundColor: "var(--primary)",
-                      color: "var(--primary-foreground)",
+                      backgroundColor: "#e11d48",
+                      color: "white",
+                      boxShadow: "0 12px 20px rgba(0,0,0,0.20)",
                     }}
                   >
                     {cartCount > 99 ? "99+" : cartCount}
                   </span>
                 )}
               </div>
-              <span className="text-[11px] font-semibold leading-none">{item.label}</span>
+              <span className="text-[11px] font-semibold leading-none" style={{ transform: isCenter ? "translateY(-6px)" : "none" }}>
+                {item.label}
+              </span>
               {active && (
                 <span
                   className="absolute bottom-1 h-1 w-10 rounded-full"
-                  style={{ backgroundColor: "var(--primary)" }}
+                  style={{ backgroundColor: "rgba(0,0,0,0.86)" }}
                   aria-hidden
                 />
               )}
