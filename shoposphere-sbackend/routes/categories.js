@@ -27,7 +27,7 @@ router.get("/:id", async (req, res) => {
   try {
     const category = await prisma.category.findUnique({
       where: { id: Number(req.params.id) },
-      include: { products: { include: { sizes: true } } },
+      include: { products: { include: { variants: true, colors: true } } },
     });
     
     if (!category) {

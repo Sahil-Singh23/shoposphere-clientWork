@@ -18,7 +18,8 @@ router.get("/", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
       }),
       prisma.product.findMany({
         include: {
-          sizes: true,
+          variants: true,
+          colors: true,
           categories: { include: { category: true } },
         },
         orderBy: [{ order: "asc" }, { createdAt: "desc" }],
@@ -29,7 +30,8 @@ router.get("/", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
         include: {
           product: {
             include: {
-              sizes: true,
+              variants: true,
+              colors: true,
               categories: { include: { category: true } },
             },
           },

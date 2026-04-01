@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { API } from "../../api";
-import ImageUpload from "./ImageUpload";
 import VideoUpload from "./VideoUpload";
 import InstagramEmbedInput from "./InstagramEmbedInput";
 import { useToast } from "../../context/ToastContext";
@@ -22,10 +21,8 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
     originalPrice: "", // MRP for single-price products
     keywords: "",
   });
-  const [sizes, setSizes] = useState([]);
-  const [sizeSellingPrice, setSizeSellingPrice] = useState("");
-  const [sizeMrp, setSizeMrp] = useState("");
-  const [sizeOptions, setSizeOptions] = useState([]); // Reusable size options from API
+  const [productVariants, setProductVariants] = useState([]);
+  const [variantMode, setVariantMode] = useState("color");
   const [images, setImages] = useState([]);
   const [existingImages, setExistingImages] = useState([]);
   const [videos, setVideos] = useState([]);
@@ -33,7 +30,6 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
   const [instagramEmbeds, setInstagramEmbeds] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [, setLoadingSizeOptions] = useState(false);
   const [generatingDescription, setGeneratingDescription] = useState(false);
   const [descriptionLanguage, setDescriptionLanguage] = useState("English");
   const formRef = useRef(null);
@@ -43,15 +39,18 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
   const snapshot = useMemo(() => {
     return JSON.stringify({
       formData,
-      sizes,
-      sizeSellingPrice,
-      sizeMrp,
+      productVariants: productVariants.map((v) => ({
+        colorName: v.colorName,
+        colorHex: v.colorHex,
+        imageCount: (v.images?.length || 0) + (v.existingImages?.length || 0),
+        sizes: v.sizes,
+      })),
       existingImages,
       selectedCategories,
       // For new images, treat any selection as "dirty"
       imagesSelectedCount: images.length,
     });
-  }, [formData, sizes, sizeSellingPrice, sizeMrp, existingImages, selectedCategories, images.length]);
+  }, [formData, productVariants, existingImages, selectedCategories, images.length]);
 
   const isDirty = initialSnapshotRef.current !== "" && snapshot !== initialSnapshotRef.current;
 
@@ -68,17 +67,49 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
         originalPrice: product.originalPrice != null ? String(product.originalPrice) : "",
         keywords: product.keywords ? (Array.isArray(product.keywords) ? product.keywords.join(", ") : product.keywords) : "",
       });
-      setSizes(
-        product.sizes && product.sizes.length > 0
-          ? product.sizes.map((s) => ({
-              label: s.label,
-              stock: String(typeof s.stock === "number" ? s.stock : s.stock ?? "0"),
-            }))
-          : []
-      );
-      const firstSize = product.sizes && product.sizes.length > 0 ? product.sizes[0] : null;
-      setSizeSellingPrice(firstSize?.price != null ? String(firstSize.price) : "");
-      setSizeMrp(firstSize?.originalPrice != null ? String(firstSize.originalPrice) : "");
+      const colorRows = Array.isArray(product.colors) ? product.colors : [];
+      const variantRows = Array.isArray(product.variants) ? product.variants : [];
+      const grouped = new Map();
+
+      for (const color of colorRows) {
+        grouped.set(`color-${color.id}`, {
+          id: `color-${color.id}`,
+          colorId: color.id,
+          colorName: color.name || "",
+          colorHex: color.hexCode || "#000000",
+          images: [],
+          imagePreviews: [],
+          existingImages: color.photoUrl ? [color.photoUrl] : [],
+          sizes: [],
+          collapsed: false,
+        });
+      }
+
+      for (const v of variantRows) {
+        const key = v?.colorId != null ? `color-${v.colorId}` : `no-color-${v.sizeLabel || v.id}`;
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            id: key,
+            colorId: v?.colorId ?? null,
+            colorName: v?.color?.name || "",
+            colorHex: v?.color?.hexCode || "#000000",
+            images: [],
+            imagePreviews: [],
+            existingImages: v?.color?.photoUrl ? [v.color.photoUrl] : [],
+            sizes: [],
+            collapsed: false,
+          });
+        }
+        grouped.get(key).sizes.push({
+          sizeLabel: v.sizeLabel || "",
+          price: v.price != null ? String(v.price) : "",
+          originalPrice: v.originalPrice != null ? String(v.originalPrice) : "",
+          stock: v.stock != null ? String(v.stock) : "0",
+          sku: v.sku || "",
+        });
+      }
+
+      setProductVariants([...grouped.values()]);
       setExistingImages(product.images || []);
       setExistingVideos(product.videos && Array.isArray(product.videos) ? product.videos : []);
       setInstagramEmbeds(product.instagramEmbeds && Array.isArray(product.instagramEmbeds) ? product.instagramEmbeds : []);
@@ -103,9 +134,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
         originalPrice: "",
         keywords: "",
       });
-      setSizes([]);
-      setSizeSellingPrice("");
-      setSizeMrp("");
+      setProductVariants([]);
       setImages([]);
       setExistingImages([]);
       setInstagramEmbeds([]);
@@ -142,14 +171,15 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
           product?.sizes && product.sizes.length > 0
             ? product.sizes.map((s) => ({ label: s.label, stock: s.stock ?? 0 }))
             : [],
-        sizeSellingPrice:
-          product?.sizes && product.sizes.length > 0 && product.sizes[0]?.price != null
-            ? String(product.sizes[0].price)
-            : "",
-        sizeMrp:
-          product?.sizes && product.sizes.length > 0 && product.sizes[0]?.originalPrice != null
-            ? String(product.sizes[0].originalPrice)
-            : "",
+        productVariants:
+          Array.isArray(product?.variants)
+            ? product.variants.map((v) => ({
+                colorName: v?.color?.name || "",
+                colorHex: v?.color?.hexCode || "#000000",
+                sizeLabel: v?.sizeLabel || "",
+                price: v?.price != null ? String(v.price) : "",
+              }))
+            : [],
         existingImages: product?.images || [],
         existingVideos: product?.videos && Array.isArray(product.videos) ? product.videos : [],
         selectedCategories:
@@ -163,19 +193,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
     }, 0);
   }, [product]);
 
-  // Fetch reusable size options when form mounts
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingSizeOptions(true);
-    fetch(`${API}/size-options`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled && Array.isArray(data)) setSizeOptions(data);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingSizeOptions(false));
-    return () => { cancelled = true; };
-  }, []);
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -187,13 +205,34 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
       return;
     }
     
-    if (sizes.length === 0) {
-      toast.error("Please select at least one size");
+    if (productVariants.length === 0) {
+      toast.error("Please add at least one product variant");
       return;
     }
-    if (!sizeSellingPrice || parseFloat(sizeSellingPrice) <= 0) {
-      toast.error("Please enter a valid product price");
-      return;
+
+    for (const block of productVariants) {
+      if (!block.colorName?.trim()) {
+        toast.error("Please enter color name for each variant block");
+        return;
+      }
+      if ((block.images?.length || 0) === 0 && (block.existingImages?.length || 0) === 0) {
+        toast.error(`Please upload images for color \"${block.colorName}\"`);
+        return;
+      }
+      if (!block.sizes?.length) {
+        toast.error(`Please add at least one size for color \"${block.colorName}\"`);
+        return;
+      }
+      for (const s of block.sizes) {
+        if (!s.sizeLabel?.trim()) {
+          toast.error(`Size label is required in color \"${block.colorName}\"`);
+          return;
+        }
+        if (!(parseFloat(s.price) > 0)) {
+          toast.error(`Valid price is required for ${block.colorName} - ${s.sizeLabel || "size"}`);
+          return;
+        }
+      }
     }
     
     setLoading(true);
@@ -210,7 +249,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
       formDataToSend.append("isNew", formData.isNew);
       formDataToSend.append("isTrending", formData.isTrending);
       formDataToSend.append("isReady60Min", formData.isReady60Min);
-      formDataToSend.append("originalPrice", sizeMrp ? sizeMrp : "");
+      formDataToSend.append("originalPrice", "");
       
       // Auto-generate keywords from product name if not already set
       let keywordsArray = [];
@@ -224,18 +263,53 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
       // Categories - send as array
       formDataToSend.append("categoryIds", JSON.stringify(selectedCategories));
       
-      // Sizes use shared price/MRP with per-size stock.
       formDataToSend.append(
-        "sizes",
+        "colors",
         JSON.stringify(
-          sizes.filter((s) => s.label).map((s) => ({
-            label: s.label,
-            price: sizeSellingPrice,
-            originalPrice: sizeMrp != null && sizeMrp !== "" ? sizeMrp : null,
-            stock: Math.max(0, parseInt(s.stock, 10) || 0),
-          }))
+          (() => {
+            let uploadIndex = 0;
+            return productVariants
+              .filter((b) => b.colorName?.trim())
+              .map((b, index) => {
+                const existingPreview = b.existingImages?.[0] || "";
+                let photoUrl = existingPreview;
+                if (b.images?.length) {
+                  photoUrl = `__COLOR_UPLOAD_${uploadIndex}__`;
+                  formDataToSend.append("colorPhotos", b.images[0]);
+                  uploadIndex += 1;
+                }
+                return {
+                  key: b.id,
+                  name: b.colorName.trim(),
+                  hexCode: b.colorHex || "#000000",
+                  photoUrl,
+                  order: index,
+                };
+              });
+          })()
         )
       );
+
+      const variantsPayload = [];
+      for (const b of productVariants) {
+        for (const s of b.sizes || []) {
+          variantsPayload.push({
+            colorKey: b.id,
+            colorName: b.colorName,
+            sizeLabel: s.sizeLabel?.trim() || "",
+            price: parseFloat(s.price) || 0,
+            originalPrice: s.originalPrice != null && s.originalPrice !== "" ? parseFloat(s.originalPrice) : null,
+            stock: Math.max(0, parseInt(s.stock, 10) || 0),
+            sku: (s.sku || "").trim() || null,
+          });
+        }
+      }
+      formDataToSend.append("variants", JSON.stringify(variantsPayload));
+
+      const allVariantImages = productVariants.flatMap((b) => b.images || []);
+      allVariantImages.forEach((file) => {
+        formDataToSend.append("images", file);
+      });
 
       // Keep DB clean from legacy fruit weight payloads.
       formDataToSend.append(
@@ -252,9 +326,6 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
         formDataToSend.append("existingVideos", JSON.stringify(existingVideos));
       }
 
-      images.forEach((file) => {
-        formDataToSend.append("images", file);
-      });
       videos.forEach((file) => {
         formDataToSend.append("videos", file);
       });
@@ -288,9 +359,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
           originalPrice: "",
           keywords: "",
         });
-        setSizes([]);
-        setSizeSellingPrice("");
-        setSizeMrp("");
+        setProductVariants([]);
         setImages([]);
         setExistingImages([]);
         setSelectedCategories([]);
@@ -324,9 +393,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
       originalPrice: "",
       keywords: "",
     });
-    setSizes([]);
-    setSizeSellingPrice("");
-    setSizeMrp("");
+    setProductVariants([]);
     setImages([]);
     setExistingImages([]);
     setVideos([]);
@@ -352,48 +419,102 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
     }
   };
 
-  const removeSize = (index) => {
-    setSizes(sizes.filter((_, i) => i !== index));
+  const addVariantBlock = () => {
+    setProductVariants((prev) => [
+      ...prev,
+      {
+        id: `v-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        colorName: "",
+        colorHex: "#000000",
+        images: [],
+        imagePreviews: [],
+        existingImages: [],
+        sizes: [{ sizeLabel: "", price: "", originalPrice: "", stock: "0", sku: "" }],
+        collapsed: false,
+      },
+    ]);
   };
 
-  const updateSize = (index, field, value) => {
-    const newSizes = [...sizes];
-    if (!newSizes[index]) return;
-    newSizes[index] = { ...newSizes[index], [field]: value };
-    setSizes(newSizes);
+  const updateVariantBlock = (id, patch) => {
+    setProductVariants((prev) => prev.map((v) => (v.id === id ? { ...v, ...patch } : v)));
   };
 
-  // Toggle saved size option: add/remove from selected sizes
-  const toggleSizeOption = (label) => {
-    const existing = sizes.find((s) => (s.label || "").trim().toLowerCase() === (label || "").trim().toLowerCase());
-    if (existing) {
-      setSizes(sizes.filter((s) => (s.label || "").trim().toLowerCase() !== (label || "").trim().toLowerCase()));
-    } else {
-      setSizes([...sizes, { label: label.trim(), stock: "0" }]);
-    }
+  const removeVariantBlock = (id) => {
+    setProductVariants((prev) => prev.filter((v) => v.id !== id));
   };
 
-  // Add custom size and optionally save to reusable options
-  const addCustomSize = async (label, saveAsReusable = false) => {
-    const trimmed = (label || "").trim();
-    if (!trimmed) return;
-    if (sizes.some((s) => (s.label || "").trim().toLowerCase() === trimmed.toLowerCase())) {
-      toast.error("This size is already added");
+  const toggleVariantCollapse = (id) => {
+    setProductVariants((prev) => prev.map((v) => (v.id === id ? { ...v, collapsed: !v.collapsed } : v)));
+  };
+
+  const addSizeToVariant = (id) => {
+    setProductVariants((prev) => prev.map((v) => (
+      v.id === id
+        ? { ...v, sizes: [...(v.sizes || []), { sizeLabel: "", price: "", originalPrice: "", stock: "0", sku: "" }] }
+        : v
+    )));
+  };
+
+  const removeSizeFromVariant = (id, index) => {
+    setProductVariants((prev) => prev.map((v) => {
+      if (v.id !== id) return v;
+      const next = (v.sizes || []).filter((_, i) => i !== index);
+      return { ...v, sizes: next.length ? next : [{ sizeLabel: "", price: "", originalPrice: "", stock: "0", sku: "" }] };
+    }));
+  };
+
+  const updateVariantSize = (id, index, patch) => {
+    setProductVariants((prev) => prev.map((v) => {
+      if (v.id !== id) return v;
+      const sizes = [...(v.sizes || [])];
+      sizes[index] = { ...sizes[index], ...patch };
+      return { ...v, sizes };
+    }));
+  };
+
+  const handleVariantImagesChange = (id, files) => {
+    const selected = Array.from(files || []);
+    if (!selected.length) return;
+    const target = productVariants.find((v) => v.id === id);
+    if (!target?.colorName?.trim()) {
+      toast.error("Enter color name first, then upload images");
       return;
     }
-    setSizes([...sizes, { label: trimmed, stock: "0" }]);
-    if (saveAsReusable) {
-      try {
-        const token = localStorage.getItem("adminToken");
-        await fetch(`${API}/size-options`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ label: trimmed }),
-        });
-      } catch {
-        // Ignore failures when saving reusable size option.
-      }
-    }
+    const previews = selected.map((f) => URL.createObjectURL(f));
+    setProductVariants((prev) => prev.map((v) => (
+      v.id === id
+        ? {
+            ...v,
+            images: [...(v.images || []), ...selected],
+            imagePreviews: [...(v.imagePreviews || []), ...previews],
+          }
+        : v
+    )));
+  };
+
+  const handleColorPhotoChange = (id, file) => {
+    if (!file) return;
+    handleVariantImagesChange(id, [file]);
+  };
+
+  const pickColorFromImageClick = (id, e) => {
+    const img = e.currentTarget;
+    const rect = img.getBoundingClientRect();
+    const scaleX = img.naturalWidth / rect.width;
+    const scaleY = img.naturalHeight / rect.height;
+    const x = Math.floor((e.clientX - rect.left) * scaleX);
+    const y = Math.floor((e.clientY - rect.top) * scaleY);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+    ctx.drawImage(img, 0, 0);
+    const pixel = ctx.getImageData(x, y, 1, 1).data;
+    const toHex = (n) => n.toString(16).padStart(2, "0");
+    const hex = `#${toHex(pixel[0])}${toHex(pixel[1])}${toHex(pixel[2])}`.toUpperCase();
+    updateVariantBlock(id, { colorHex: hex });
   };
 
   // Generate product description via backend (one-time per product when cached; Regenerate forces new)
@@ -408,7 +529,11 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
         .map((id) => categories.find((c) => c.id === id)?.name)
         .filter(Boolean)
         .join(", ");
-      const sizeVariant = sizes.map((s) => s.label).filter(Boolean).join(", ");
+      const sizeVariant = productVariants
+        .flatMap((v) => v.sizes || [])
+        .map((s) => s.sizeLabel)
+        .filter(Boolean)
+        .join(", ");
       let priceRange = "";
       if (sizeSellingPrice) priceRange = `₹${sizeSellingPrice}`;
       const payload = {
@@ -694,12 +819,197 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
           </div>
         </div>
 
-        <ImageUpload
-          images={images}
-          existingImages={existingImages}
-          onImagesChange={setImages}
-          onExistingImagesChange={setExistingImages}
-        />
+        <div className="border rounded-xl p-4 space-y-4" style={{ borderColor: "var(--border)", backgroundColor: "var(--muted)" }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
+            <div>
+              <label className="block text-sm font-semibold mb-1" style={{ color: "var(--foreground)" }}>
+                Variant Type
+              </label>
+              <select
+                value={variantMode}
+                onChange={(e) => setVariantMode(e.target.value)}
+                className="w-full px-3 py-2.5 border-2 rounded-lg focus:outline-none"
+                style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
+              >
+                <option value="color">Color</option>
+              </select>
+            </div>
+            <div className="flex justify-start md:justify-end">
+              <button
+                type="button"
+                onClick={addVariantBlock}
+                className="px-4 py-2.5 bg-pink-600 text-white rounded-lg text-sm font-semibold hover:bg-pink-700 transition"
+              >
+                + Add New Product Variant
+              </button>
+            </div>
+          </div>
+
+          {productVariants.length === 0 ? (
+            <p className="text-sm text-gray-500">No product variants added yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {productVariants.map((variant, vIndex) => (
+                <div key={variant.id} className="rounded-lg border bg-white" style={{ borderColor: "var(--border)" }}>
+                  <div className="flex items-center justify-between gap-2 px-3 py-2 border-b" style={{ borderColor: "var(--border)" }}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-gray-700">Variant {vIndex + 1}</span>
+                      <span className="text-xs text-gray-500">{variant.colorName || "Color name pending"}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleVariantCollapse(variant.id)}
+                        className="px-2 py-1 rounded border text-xs"
+                        style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                      >
+                        {variant.collapsed ? "Expand" : "Collapse"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeVariantBlock(variant.id)}
+                        className="px-2 py-1 bg-red-500 text-white rounded text-xs font-semibold"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+
+                  {!variant.collapsed && (
+                    <div className="p-3 space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Colour Name *</label>
+                        <input
+                          type="text"
+                          value={variant.colorName}
+                          onChange={(e) => updateVariantBlock(variant.id, { colorName: e.target.value })}
+                          placeholder="e.g., Red"
+                          className="w-full px-3 py-2 border-2 rounded-lg focus:outline-none"
+                          style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Upload Product Images For This Variant *</label>
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          disabled={!variant.colorName?.trim()}
+                          onChange={(e) => handleVariantImagesChange(variant.id, e.target.files)}
+                          className="text-sm"
+                        />
+                        {!variant.colorName?.trim() && (
+                          <p className="text-xs text-amber-700 mt-1">Enter colour name first, then upload variant images.</p>
+                        )}
+                      </div>
+
+                      {(variant.imagePreviews?.length > 0 || variant.existingImages?.length > 0) && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <label className="block text-xs font-semibold text-gray-600">Pick Color From Uploaded Image</label>
+                            <input
+                              type="color"
+                              value={variant.colorHex || "#000000"}
+                              onChange={(e) => updateVariantBlock(variant.id, { colorHex: e.target.value.toUpperCase() })}
+                              className="w-10 h-8 p-0 border rounded"
+                            />
+                            <span className="text-xs text-gray-600">{(variant.colorHex || "#000000").toUpperCase()}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {[...(variant.imagePreviews || []), ...(variant.existingImages || [])].map((src, idx) => (
+                              <img
+                                key={`${variant.id}-img-${idx}`}
+                                src={src}
+                                alt={`${variant.colorName || "variant"} preview ${idx + 1}`}
+                                onClick={(e) => pickColorFromImageClick(variant.id, e)}
+                                className="h-20 w-20 object-cover rounded-lg border cursor-crosshair"
+                                style={{ borderColor: "var(--border)" }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="border rounded-lg p-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--muted)" }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-xs font-semibold text-gray-700">Sizes For This Variant</label>
+                          <button
+                            type="button"
+                            onClick={() => addSizeToVariant(variant.id)}
+                            className="px-2 py-1 bg-gray-200 rounded text-xs font-semibold hover:bg-gray-300"
+                          >
+                            + Add Size
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          {(variant.sizes || []).map((sizeRow, sIndex) => (
+                            <div key={`${variant.id}-size-${sIndex}`} className="grid grid-cols-1 md:grid-cols-5 gap-2 items-end">
+                              <input
+                                type="text"
+                                value={sizeRow.sizeLabel}
+                                onChange={(e) => updateVariantSize(variant.id, sIndex, { sizeLabel: e.target.value })}
+                                placeholder="Size (e.g., M, 500gm)"
+                                className="px-3 py-2 border-2 rounded-lg focus:outline-none"
+                                style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
+                              />
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={sizeRow.price}
+                                onChange={(e) => updateVariantSize(variant.id, sIndex, { price: e.target.value })}
+                                placeholder="Price"
+                                className="px-3 py-2 border-2 rounded-lg focus:outline-none"
+                                style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
+                              />
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={sizeRow.originalPrice}
+                                onChange={(e) => updateVariantSize(variant.id, sIndex, { originalPrice: e.target.value })}
+                                placeholder="MRP (optional)"
+                                className="px-3 py-2 border-2 rounded-lg focus:outline-none"
+                                style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
+                              />
+                              <input
+                                type="number"
+                                min="0"
+                                value={sizeRow.stock}
+                                onChange={(e) => updateVariantSize(variant.id, sIndex, { stock: e.target.value })}
+                                placeholder="Stock"
+                                className="px-3 py-2 border-2 rounded-lg focus:outline-none"
+                                style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
+                              />
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={sizeRow.sku}
+                                  onChange={(e) => updateVariantSize(variant.id, sIndex, { sku: e.target.value })}
+                                  placeholder="SKU (optional)"
+                                  className="w-full px-3 py-2 border-2 rounded-lg focus:outline-none"
+                                  style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeSizeFromVariant(variant.id, sIndex)}
+                                  className="px-2 py-2 bg-red-500 text-white rounded text-xs font-semibold"
+                                >
+                                  X
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <VideoUpload
           videos={videos}
@@ -712,140 +1022,6 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
           instagramEmbeds={instagramEmbeds}
           onChange={setInstagramEmbeds}
         />
-
-        <div className="border-t border-gray-200 pt-6">
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-semibold text-gray-700">Sizes & Stock</label>
-            </div>
-            {sizeOptions.length > 0 && (
-              <div className="mb-4">
-                <p className="text-xs text-gray-600 mb-2">Select saved sizes:</p>
-                <div className="flex flex-wrap gap-2">
-                  {sizeOptions.map((opt) => {
-                    const isSelected = sizes.some((s) => (s.label || "").trim().toLowerCase() === (opt.label || "").trim().toLowerCase());
-                    return (
-                      <label
-                        key={opt.id}
-                        className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition ${
-                          isSelected ? "border-pink-500 bg-pink-50" : "border-gray-200 bg-white"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSizeOption(opt.label)}
-                          className="w-4 h-4 text-pink-600 rounded focus:ring-pink-500"
-                        />
-                        <span className="text-sm font-medium text-gray-700">{opt.label}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Our Price *</label>
-                <input
-                  type="number"
-                  value={sizeSellingPrice}
-                  onChange={(e) => setSizeSellingPrice(e.target.value)}
-                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none transition"
-                  style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
-                  step="0.01"
-                  min="0"
-                  placeholder="e.g., 999"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">MRP (optional)</label>
-                <input
-                  type="number"
-                  value={sizeMrp}
-                  onChange={(e) => setSizeMrp(e.target.value)}
-                  className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none transition"
-                  style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
-                  step="0.01"
-                  min="0"
-                  placeholder="e.g., 1299"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-2 mb-4 flex-wrap">
-              <input
-                type="text"
-                id="custom-size-label"
-                placeholder="Custom size"
-                className="flex-1 min-w-30 px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-pink-500 transition"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    const input = e.target;
-                    addCustomSize(input.value, false);
-                    input.value = "";
-                  }
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  const input = document.getElementById("custom-size-label");
-                  if (input) {
-                    addCustomSize(input.value, false);
-                    input.value = "";
-                  }
-                }}
-                className="px-4 py-2.5 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300 transition"
-              >
-                + Add
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const input = document.getElementById("custom-size-label");
-                  if (input) {
-                    addCustomSize(input.value, true);
-                    input.value = "";
-                    toast.success("Size added and saved for future products");
-                  }
-                }}
-                className="px-4 py-2.5 border-2 border-pink-500 text-pink-600 rounded-lg text-sm font-semibold hover:bg-pink-50 transition"
-              >
-                Add & save for future
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {sizes.length === 0 ? (
-                <p className="text-sm text-gray-500 italic">No sizes added. Select from above or add a custom size.</p>
-              ) : (
-                sizes.map((size, index) => (
-                  <div key={index} className="flex flex-wrap gap-2 items-center p-3 rounded-lg border border-gray-200 bg-gray-50/50">
-                    <span className="font-semibold text-gray-700 min-w-16">{size.label}</span>
-                    <input
-                      type="number"
-                      placeholder="Stock"
-                      value={size.stock ?? ""}
-                      onChange={(e) => updateSize(index, "stock", e.target.value)}
-                      className="w-20 px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-pink-500 transition text-sm"
-                      min="0"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeSize(index)}
-                      className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-sm font-semibold"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
 
         <div className="sticky bottom-0 pt-4 pb-2 border-t" style={{ backgroundColor: "var(--background)", borderColor: "var(--border)" }}>
           <div className="flex gap-4">

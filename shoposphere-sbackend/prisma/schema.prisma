@@ -75,18 +75,18 @@ model Product {
   isNew         Boolean        @default(false)
   isTrending    Boolean        @default(false)
   isReady60Min  Boolean        @default(false) // 60 minutes ready/delivery option
-  originalPrice Float?         // Optional product-level MRP hint (actual selling price comes from sizes)
+  originalPrice Float?         // Optional product-level MRP hint (legacy/fallback)
   images        String         @db.Text // JSON array of image URLs
   videos        String?        @db.Text // JSON array of video URLs (optional)
   instagramEmbeds String?      @db.Text // JSON array of Instagram embed objects: [{url, enabled, createdAt}]
   keywords      String         @db.Text // JSON array for multilingual search
   order         Int            @default(0) // For ordering products
-  stock         Int            @default(0) // Inventory; never allow negative
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
   categories    ProductCategory[]
-  sizes         ProductSize[]
+  colors        ProductColor[]
+  variants      ProductVariant[]
   orderItems    OrderItem[]
   reels         Reel[]
   cartItems     CartItem[]
@@ -100,16 +100,45 @@ model Product {
   @@index([order])
 }
 
-model ProductSize {
-  id            Int     @id @default(autoincrement())
-  label         String
-  price         Float   // Selling price
-  originalPrice Float?  // MRP / list price (strikethrough on frontend)
-  stock         Int     @default(0) // Inventory for this size variant
-  productId    Int
+model ProductColor {
+  id         Int      @id @default(autoincrement())
+  productId  Int
+  name       String
+  hexCode    String
+  photoUrl   String   @db.Text
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  cartItems  CartItem[]
+  product    Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variants   ProductVariant[]
+
+  @@index([productId, order])
+  @@unique([productId, name])
+}
+
+model ProductVariant {
+  id            Int      @id @default(autoincrement())
+  productId     Int
+  colorId       Int?
+  sizeLabel     String
+  price         Float
+  originalPrice Float?
+  stock         Int      @default(0)
+  sku           String   @unique
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  color         ProductColor? @relation(fields: [colorId], references: [id], onDelete: SetNull)
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+
+  @@index([productId])
+  @@index([colorId])
+  @@index([productId, isActive])
+  @@unique([productId, colorId, sizeLabel])
 }
 
 // Reusable size options (e.g. S, M, L, 250gm, 500gm) for admin checkbox list
@@ -194,14 +223,19 @@ model OrderItem {
   id          Int      @id @default(autoincrement())
   orderId     Int
   productId   Int
+  variantId   Int?
   productName String
+  colorName   String?
   sizeLabel   String
   quantity    Int
   price       Float
   subtotal    Float
 
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product     Product  @relation(fields: [productId], references: [id])
+  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product         @relation(fields: [productId], references: [id])
+  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([variantId])
 }
 
 model ContactMessage {
@@ -271,15 +305,16 @@ model CartItem {
   id            Int     @id @default(autoincrement())
   cartId        String
   productId     Int
-  productSizeId Int?
+  variantId     Int?
   quantity      Int     @default(1)
 
-  cart    Cart         @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  product Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
-  size    ProductSize? @relation(fields: [productSizeId], references: [id], onDelete: Cascade)
+  cart    Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
   @@index([cartId])
-  @@index([cartId, productId, productSizeId])
+  @@index([cartId, productId])
+  @@index([variantId])
 }
 
 model Wishlist {
