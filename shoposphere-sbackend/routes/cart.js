@@ -30,6 +30,21 @@ function getIncomingVariantId(payload = {}) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+function getPrimaryColorPhotoUrl(value) {
+  if (!value) return "";
+  if (Array.isArray(value)) return value[0] || "";
+  if (typeof value !== "string") return "";
+  const raw = value.trim();
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed[0] || "";
+  } catch {
+    // legacy single URL string
+  }
+  return raw;
+}
+
 /** Hydrate cart items to frontend shape with variant metadata. */
 async function hydrateCartItems(items) {
   if (!items?.length) return [];
@@ -64,7 +79,7 @@ async function hydrateCartItems(items) {
           return [];
         }
       })();
-      const productImage = variant.color?.photoUrl || (images.length ? images[0] : null);
+      const productImage = getPrimaryColorPhotoUrl(variant.color?.photoUrl) || (images.length ? images[0] : null);
       const sizeLabel = variant.sizeLabel || "Standard";
       const price = parseFloat(variant.price || 0);
       const variantId = variant.id;
@@ -453,7 +468,7 @@ router.post("/sync", async (req, res) => {
           id: `${item.productId}-${variant.id}`,
           productId: product.id,
           productName: product.name,
-          productImage: variant.color?.photoUrl || (product.images?.length ? product.images[0] : null),
+          productImage: getPrimaryColorPhotoUrl(variant.color?.photoUrl) || (product.images?.length ? product.images[0] : null),
           sizeId: variant.id,
           variantId: variant.id,
           sizeLabel: variant.sizeLabel,

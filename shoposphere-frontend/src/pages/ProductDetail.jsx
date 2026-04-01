@@ -23,6 +23,7 @@ export default function ProductDetail() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState(null);
+  const [selectedColorId, setSelectedColorId] = useState(null);
   const [selectedWeight, setSelectedWeight] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -39,6 +40,66 @@ export default function ProductDetail() {
   const [submitReviewLoading, setSubmitReviewLoading] = useState(false);
   const isWishlisted = product ? isInWishlist(product.id) : false;
   const isWishlistToggling = product && togglingId === product.id;
+
+  const deriveSizeOptionsFromVariants = (variants = []) => {
+    const byLabel = new Map();
+    for (const variant of variants) {
+      const label = String(variant?.sizeLabel || "").trim();
+      if (!label) continue;
+
+      const next = {
+        id: variant.id,
+        label,
+        price: Number(variant.price || 0),
+        originalPrice:
+          variant.originalPrice != null && variant.originalPrice !== ""
+            ? Number(variant.originalPrice)
+            : null,
+        stock: Math.max(0, Number(variant.stock || 0)),
+      };
+
+      if (!byLabel.has(label)) {
+        byLabel.set(label, next);
+        continue;
+      }
+
+      const current = byLabel.get(label);
+      current.stock += next.stock;
+      if (next.price < current.price) {
+        current.id = next.id;
+        current.price = next.price;
+        current.originalPrice = next.originalPrice;
+      }
+    }
+
+    return [...byLabel.values()];
+  };
+
+  const pickPreferredSize = (sizes = []) => {
+    if (!Array.isArray(sizes) || sizes.length === 0) return null;
+    const inStock = sizes.find((s) => Math.max(0, Number(s?.stock ?? 0)) > 0);
+    return inStock || sizes[0] || null;
+  };
+
+  const colorOptions = useMemo(() => {
+    if (!Array.isArray(product?.colors)) return [];
+    return [...product.colors].sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+  }, [product?.colors]);
+
+  const selectedColor = useMemo(() => {
+    if (!selectedColorId) return null;
+    return colorOptions.find((c) => c.id === selectedColorId) || null;
+  }, [colorOptions, selectedColorId]);
+
+  const sizeOptions = useMemo(() => {
+    if (Array.isArray(product?.variants) && product.variants.length > 0) {
+      const filteredVariants = selectedColorId
+        ? product.variants.filter((v) => v.colorId === selectedColorId)
+        : product.variants;
+      return deriveSizeOptionsFromVariants(filteredVariants);
+    }
+    return Array.isArray(product?.sizes) ? product.sizes : [];
+  }, [product?.variants, product?.sizes, selectedColorId]);
   
   const images = useMemo(() => {
     if (!product?.images) return [];
@@ -50,6 +111,26 @@ export default function ProductDetail() {
       return [];
     }
   }, [product?.images]);
+
+  const selectedColorImages = useMemo(() => {
+    const colorPhotoUrls = Array.isArray(selectedColor?.photoUrls)
+      ? selectedColor.photoUrls.filter(Boolean)
+      : selectedColor?.photoUrl
+        ? [selectedColor.photoUrl]
+        : [];
+
+    if (!colorPhotoUrls.length) return images;
+
+    const deduped = [];
+    const seen = new Set();
+    for (const url of colorPhotoUrls) {
+      if (!seen.has(url)) {
+        seen.add(url);
+        deduped.push(url);
+      }
+    }
+    return deduped;
+  }, [images, selectedColor?.photoUrl, selectedColor?.photoUrls]);
 
   const videos = useMemo(() => {
     if (!product?.videos || !Array.isArray(product.videos)) return [];
@@ -69,15 +150,14 @@ export default function ProductDetail() {
 
   // Combined media: images, videos, and Instagram embeds
   const media = useMemo(() => {
-    const imgItems = images.map((url) => ({ type: "image", url }));
+    const imgItems = selectedColorImages.map((url) => ({ type: "image", url }));
     const vidItems = videos.map((url) => ({ type: "video", url }));
     const instaItems = instagramEmbeds.map((embed) => ({ type: "instagram", url: embed.url }));
     return [...imgItems, ...vidItems, ...instaItems];
-  }, [images, videos, instagramEmbeds]);
+  }, [selectedColorImages, videos, instagramEmbeds]);
 
   const activeMedia = media[activeImageIndex] || media[0] || null;
   const activeImage = activeMedia?.type === "image" ? activeMedia.url : null;
-  const activeVideo = activeMedia?.type === "video" ? activeMedia.url : null;
   const activeInstagram = activeMedia?.type === "instagram" ? activeMedia.url : null;
   const instagramEmbedRef = useRef(null);
 
@@ -98,6 +178,10 @@ export default function ProductDetail() {
       .then((data) => {
         setProduct(data);
         if (data?.id) addViewed(data.id);
+
+        const initialColorId = Array.isArray(data?.colors) && data.colors.length > 0 ? data.colors[0].id : null;
+        setSelectedColorId(initialColorId);
+
         // Handle weight-based products (fruits)
         if (data?.weightOptions) {
           try {
@@ -119,10 +203,17 @@ export default function ProductDetail() {
             price: parseFloat(data.singlePrice),
             originalPrice: data.originalPrice != null && data.originalPrice !== "" ? parseFloat(data.originalPrice) : null,
           });
-        } else if (data?.sizes && data.sizes.length > 0) {
-          setSelectedSize(data.sizes[0]);
         } else {
-          setSelectedSize(null);
+          let nextSizes = [];
+          if (Array.isArray(data?.variants) && data.variants.length > 0) {
+            const variantPool = initialColorId
+              ? data.variants.filter((v) => v.colorId === initialColorId)
+              : data.variants;
+            nextSizes = deriveSizeOptionsFromVariants(variantPool);
+          } else if (data?.sizes && data.sizes.length > 0) {
+            nextSizes = data.sizes;
+          }
+          setSelectedSize(pickPreferredSize(nextSizes));
         }
         setQuantity(1);
         setActiveImageIndex(0);
@@ -172,7 +263,17 @@ export default function ProductDetail() {
       });
 
     return () => ac.abort();
-  }, [id]);
+  }, [id, addViewed]);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [selectedColorId]);
+
+  useEffect(() => {
+    if (activeImageIndex >= media.length) {
+      setActiveImageIndex(0);
+    }
+  }, [activeImageIndex, media.length]);
 
   // Fetch reviews for this product
   useEffect(() => {
@@ -276,6 +377,8 @@ export default function ProductDetail() {
       return 0;
     }
     if (selectedSize && selectedSize.id !== 0) {
+      if (typeof selectedSize.stock === "number") return Math.max(0, selectedSize.stock);
+
       const s = product.sizes?.find((sz) => sz.id === selectedSize.id);
       if (s && typeof s.stock === "number") return Math.max(0, s.stock);
     }
@@ -328,15 +431,15 @@ export default function ProductDetail() {
         return `₹${Number(product.singlePrice).toLocaleString("en-IN")}`;
       }
 
-      if (product?.sizes?.length) {
-        const minSize = product.sizes.reduce((a, b) => (Number(a.price) <= Number(b.price) ? a : b));
+      if (sizeOptions.length) {
+        const minSize = sizeOptions.reduce((a, b) => (Number(a.price) <= Number(b.price) ? a : b));
         if (minSize?.price != null) return `₹${Number(minSize.price).toLocaleString("en-IN")}`;
       }
     } catch {
       // ignore parse errors
     }
     return "Select size/weight";
-  }, [product, selectedWeight, selectedSize]);
+  }, [product, selectedWeight, selectedSize, sizeOptions]);
 
   if (loading) {
     return (
@@ -415,7 +518,7 @@ export default function ProductDetail() {
             <section className="lg:col-span-7">
               <div className="lg:flex lg:gap-4">
                 {/* Thumbnails (desktop vertical) */}
-                {media.length > 1 ? (
+                {media.length > 0 ? (
                   <div className="hidden lg:flex flex-col gap-3 w-20 shrink-0">
                     {media.slice(0, 8).map((item, idx) => {
                       const active = idx === activeImageIndex;
@@ -618,13 +721,13 @@ export default function ProductDetail() {
                       } else if (product?.hasSinglePrice && product?.singlePrice != null) {
                         selling = Number(product.singlePrice);
                         mrp = product.originalPrice != null && product.originalPrice !== "" ? Number(product.originalPrice) : null;
-                      } else if (product?.sizes?.length) {
-                        const minSize = product.sizes.reduce((a, b) => (Number(a.price) <= Number(b.price) ? a : b));
+                      } else if (sizeOptions.length) {
+                        const minSize = sizeOptions.reduce((a, b) => (Number(a.price) <= Number(b.price) ? a : b));
                         selling = Number(minSize.price);
                         mrp = minSize.originalPrice != null && minSize.originalPrice !== "" ? Number(minSize.originalPrice) : null;
                       }
                       if (selling == null) return <span className="text-sm text-design-muted">Select size to see price</span>;
-                      const showFrom = product?.sizes?.length && !selectedSize;
+                      const showFrom = sizeOptions.length && !selectedSize;
                       const discountPct = mrp != null && mrp > selling ? Math.round(((mrp - selling) / mrp) * 100) : 0;
                       return (
                         <>
@@ -645,6 +748,53 @@ export default function ProductDetail() {
                       );
                     })()}
                   </div>
+
+
+                  {/* Color selector */}
+                  {colorOptions.length > 0 ? (
+                    <div className="mt-6">
+                      <p className="text-xs font-semibold text-design-foreground mb-2.5">Select color</p>
+                      <div className="flex flex-wrap gap-2">
+                        {colorOptions.map((color) => {
+                          const active = selectedColorId === color.id;
+                          return (
+                            <button
+                              key={color.id}
+                              type="button"
+                              onClick={() => {
+                                const filteredVariants = Array.isArray(product?.variants)
+                                  ? product.variants.filter((v) => v.colorId === color.id)
+                                  : [];
+                                const nextSizes = deriveSizeOptionsFromVariants(filteredVariants);
+                                setSelectedColorId(color.id);
+                                if (nextSizes.length > 0) {
+                                  setSelectedSize(pickPreferredSize(nextSizes));
+                                  setSelectedWeight(null);
+                                } else if (!(product?.hasSinglePrice && product?.singlePrice)) {
+                                  setSelectedSize(null);
+                                }
+                                setQuantity(1);
+                              }}
+                              className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition-all duration-200 hover:opacity-90"
+                              style={
+                                active
+                                  ? { borderColor: "var(--foreground)", borderWidth: "1.5px", backgroundColor: "var(--muted)", color: "var(--foreground)" }
+                                  : { borderColor: "var(--border)", backgroundColor: "var(--card)", color: "var(--foreground)" }
+                              }
+                              aria-pressed={active}
+                              aria-label={`Color ${color.name}`}
+                            >
+                              <span
+                                className="w-3 h-3 rounded-full border"
+                                style={{ backgroundColor: color.hexCode || "#000000", borderColor: "var(--border)" }}
+                              />
+                              <span>{color.name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
 
 
                   {/* Weight selector - compact label-only buttons */}
@@ -702,11 +852,11 @@ export default function ProductDetail() {
                         )}
                       </div>
                     </div>
-                  ) : product.sizes?.length ? (
+                  ) : sizeOptions.length ? (
                     <div className="mt-6">
                       <p className="text-xs font-semibold text-design-foreground mb-2.5">Select size</p>
                       <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-                        {product.sizes.map((size) => {
+                        {sizeOptions.map((size) => {
                           const active = selectedSize?.id === size.id;
                           const outOfStock = Math.max(0, Number(size.stock ?? 0)) <= 0;
                           return (

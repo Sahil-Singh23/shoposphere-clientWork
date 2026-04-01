@@ -37,7 +37,45 @@ function deriveSizesFromVariants(variants = []) {
   return [...byLabel.values()];
 }
 
+function parseColorPhotoUrls(value) {
+  if (Array.isArray(value)) {
+    return value.map((v) => String(v || "").trim()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((v) => String(v || "").trim()).filter(Boolean);
+      }
+    } catch {
+      // treat as legacy single URL string
+    }
+    return [trimmed];
+  }
+  return [];
+}
+
+function serializeColorPhotoUrls(urls = []) {
+  const cleaned = parseColorPhotoUrls(urls);
+  if (!cleaned.length) return "";
+  if (cleaned.length === 1) return cleaned[0];
+  return JSON.stringify(cleaned);
+}
+
 function normalizeProductResponse(p) {
+  const normalizedColors = Array.isArray(p.colors)
+    ? p.colors.map((color) => {
+        const photoUrls = parseColorPhotoUrls(color.photoUrl);
+        return {
+          ...color,
+          photoUrl: photoUrls[0] || "",
+          photoUrls,
+        };
+      })
+    : [];
+
   return {
     ...p,
     images: p.images ? JSON.parse(p.images) : [],
@@ -45,6 +83,7 @@ function normalizeProductResponse(p) {
     instagramEmbeds: p.instagramEmbeds ? JSON.parse(p.instagramEmbeds) : [],
     keywords: p.keywords ? JSON.parse(p.keywords) : [],
     categories: p.categories ? p.categories.map((pc) => pc.category) : [],
+    colors: normalizedColors,
     sizes: deriveSizesFromVariants(p.variants || []),
   };
 }
@@ -92,10 +131,10 @@ function normalizeColorInput(colorsArray = []) {
       key: c?.key != null && String(c.key).trim() !== "" ? String(c.key).trim() : `c-${idx + 1}`,
       name: String(c?.name || "").trim(),
       hexCode: String(c?.hexCode || "").trim() || "#000000",
-      photoUrl: String(c?.photoUrl || "").trim(),
+      photoUrls: parseColorPhotoUrls(c?.photoUrls ?? c?.photoUrl),
       order: Number.isInteger(Number(c?.order)) ? Number(c.order) : idx,
     }))
-    .filter((c) => c.name && c.photoUrl);
+    .filter((c) => c.name && c.photoUrls.length > 0);
 }
 
 function normalizeVariantInput(variantsArray = [], productName = "SKU") {
@@ -142,22 +181,28 @@ async function resolveColorPhotos(colorsToCreate = [], colorPhotoFiles = []) {
     uploadedUrls.push(url);
   }
 
-  let fallbackCursor = 0;
+  const resolveUploadToken = (value) => {
+    if (!(typeof value === "string" && value.startsWith(COLOR_UPLOAD_TOKEN_PREFIX) && value.endsWith("__"))) {
+      return value;
+    }
+    const idxRaw = value.slice(COLOR_UPLOAD_TOKEN_PREFIX.length, -2);
+    const idx = Number(idxRaw);
+    if (Number.isInteger(idx) && idx >= 0 && idx < uploadedUrls.length) {
+      return uploadedUrls[idx];
+    }
+    return "";
+  };
+
   return colorsToCreate.map((c) => {
-    let resolved = c.photoUrl;
-    if (resolved?.startsWith(COLOR_UPLOAD_TOKEN_PREFIX) && resolved.endsWith("__")) {
-      const idxRaw = resolved.slice(COLOR_UPLOAD_TOKEN_PREFIX.length, -2);
-      const idx = Number(idxRaw);
-      if (Number.isInteger(idx) && idx >= 0 && idx < uploadedUrls.length) {
-        resolved = uploadedUrls[idx];
-      } else {
-        resolved = "";
-      }
-    }
-    if (!resolved && fallbackCursor < uploadedUrls.length) {
-      resolved = uploadedUrls[fallbackCursor++];
-    }
-    return { ...c, photoUrl: resolved };
+    const resolvedUrls = (Array.isArray(c.photoUrls) ? c.photoUrls : [])
+      .map((url) => resolveUploadToken(url))
+      .filter(Boolean);
+
+    return {
+      ...c,
+      photoUrls: resolvedUrls,
+      photoUrl: resolvedUrls[0] || "",
+    };
   });
 }
 
@@ -456,7 +501,7 @@ router.post("/", requireRole("admin"), uploadProductMedia, async (req, res) => {
 
     let colorsToCreate = normalizeColorInput(colorsArrayRaw);
     colorsToCreate = await resolveColorPhotos(colorsToCreate, colorPhotoFiles);
-    colorsToCreate = colorsToCreate.filter((c) => c.name && c.photoUrl);
+    colorsToCreate = colorsToCreate.filter((c) => c.name && c.photoUrls?.length > 0);
     const hasExplicitVariants = variantsArrayRaw.length > 0;
     const variantsToCreate = hasExplicitVariants
       ? normalizeVariantInput(variantsArrayRaw, name)
@@ -467,7 +512,7 @@ router.post("/", requireRole("admin"), uploadProductMedia, async (req, res) => {
     }
 
     if (colorsToCreate.length > 0) {
-      imageUrls = [...new Set(colorsToCreate.map((c) => c.photoUrl).filter(Boolean))];
+      imageUrls = [...new Set(colorsToCreate.flatMap((c) => c.photoUrls || []).filter(Boolean))];
     }
     const categoryIdsArray = parseJsonArray(categoryIds);
 
@@ -512,7 +557,7 @@ router.post("/", requireRole("admin"), uploadProductMedia, async (req, res) => {
             productId: created.id,
             name: c.name,
             hexCode: c.hexCode,
-            photoUrl: c.photoUrl,
+            photoUrl: serializeColorPhotoUrls(c.photoUrls),
             order: c.order,
           },
         });
@@ -630,7 +675,7 @@ router.put("/:id", requireRole("admin"), uploadProductMedia, async (req, res) =>
 
     let colorsToCreate = normalizeColorInput(colorsArrayRaw);
     colorsToCreate = await resolveColorPhotos(colorsToCreate, colorPhotoFiles);
-    colorsToCreate = colorsToCreate.filter((c) => c.name && c.photoUrl);
+    colorsToCreate = colorsToCreate.filter((c) => c.name && c.photoUrls?.length > 0);
     const hasExplicitVariants = variantsArrayRaw.length > 0;
     const variantsToCreate = hasExplicitVariants
       ? normalizeVariantInput(variantsArrayRaw, name || existingProduct.name)
@@ -641,7 +686,7 @@ router.put("/:id", requireRole("admin"), uploadProductMedia, async (req, res) =>
     }
 
     if (colorsToCreate.length > 0) {
-      imageUrls = [...new Set(colorsToCreate.map((c) => c.photoUrl).filter(Boolean))];
+      imageUrls = [...new Set(colorsToCreate.flatMap((c) => c.photoUrls || []).filter(Boolean))];
     }
     const skuSet = new Set();
     for (const v of variantsToCreate) {
@@ -693,7 +738,7 @@ router.put("/:id", requireRole("admin"), uploadProductMedia, async (req, res) =>
               productId,
               name: c.name,
               hexCode: c.hexCode,
-              photoUrl: c.photoUrl,
+              photoUrl: serializeColorPhotoUrls(c.photoUrls),
               order: c.order,
             },
           });

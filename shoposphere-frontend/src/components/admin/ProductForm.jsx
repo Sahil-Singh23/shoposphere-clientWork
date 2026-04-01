@@ -6,6 +6,28 @@ import { useToast } from "../../context/ToastContext";
 
 // Treat as "edit" only when product has a valid id (duplicate passes product with id null/undefined)
 const isEditProduct = (p) => p && (p.id != null && p.id !== "");
+const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "XXL"];
+
+function parseColorImageUrls(color) {
+  if (!color) return [];
+  if (Array.isArray(color.photoUrls)) {
+    return color.photoUrls.map((u) => String(u || "").trim()).filter(Boolean);
+  }
+  if (typeof color.photoUrl === "string") {
+    const raw = color.photoUrl.trim();
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.map((u) => String(u || "").trim()).filter(Boolean);
+      }
+    } catch {
+      // legacy single URL value
+    }
+    return [raw];
+  }
+  return [];
+}
 
 export default function ProductForm({ product, categories, onSave, onCancel }) {
   const toast = useToast();
@@ -13,6 +35,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    price: "",
     badge: "",
     isFestival: false,
     isNew: false,
@@ -43,7 +66,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
         colorName: v.colorName,
         colorHex: v.colorHex,
         imageCount: (v.images?.length || 0) + (v.existingImages?.length || 0),
-        sizes: v.sizes,
+        sizeStocks: v.sizeStocks || {},
       })),
       existingImages,
       selectedCategories,
@@ -59,6 +82,12 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
       setFormData({
         name: product.name || "",
         description: product.description || "",
+        price:
+          Array.isArray(product.variants) && product.variants.length > 0 && product.variants[0].price != null
+            ? String(product.variants[0].price)
+            : product?.sizes?.[0]?.price != null
+            ? String(product.sizes[0].price)
+            : "",
         badge: product.badge || "",
         isFestival: product.isFestival || false,
         isNew: product.isNew || false,
@@ -79,8 +108,8 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
           colorHex: color.hexCode || "#000000",
           images: [],
           imagePreviews: [],
-          existingImages: color.photoUrl ? [color.photoUrl] : [],
-          sizes: [],
+          existingImages: parseColorImageUrls(color),
+          sizeStocks: {},
           collapsed: false,
         });
       }
@@ -95,18 +124,15 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
             colorHex: v?.color?.hexCode || "#000000",
             images: [],
             imagePreviews: [],
-            existingImages: v?.color?.photoUrl ? [v.color.photoUrl] : [],
-            sizes: [],
+            existingImages: parseColorImageUrls(v?.color),
+            sizeStocks: {},
             collapsed: false,
           });
         }
-        grouped.get(key).sizes.push({
-          sizeLabel: v.sizeLabel || "",
-          price: v.price != null ? String(v.price) : "",
-          originalPrice: v.originalPrice != null ? String(v.originalPrice) : "",
-          stock: v.stock != null ? String(v.stock) : "0",
-          sku: v.sku || "",
-        });
+        const normalizedSize = String(v?.sizeLabel || "").trim().toUpperCase();
+        if (normalizedSize && SIZE_OPTIONS.includes(normalizedSize)) {
+          grouped.get(key).sizeStocks[normalizedSize] = String(v?.stock ?? 0);
+        }
       }
 
       setProductVariants([...grouped.values()]);
@@ -126,6 +152,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
       setFormData({
         name: "",
         description: "",
+        price: "",
         badge: "",
         isFestival: false,
         isNew: false,
@@ -148,6 +175,12 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
           ? {
               name: product.name || "",
               description: product.description || "",
+              price:
+                Array.isArray(product?.variants) && product.variants.length > 0 && product.variants[0]?.price != null
+                  ? String(product.variants[0].price)
+                  : product?.sizes?.[0]?.price != null
+                  ? String(product.sizes[0].price)
+                  : "",
               badge: product.badge || "",
               isFestival: product.isFestival || false,
               isNew: product.isNew || false,
@@ -159,6 +192,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
           : {
               name: "",
               description: "",
+              price: "",
               badge: "",
               isFestival: false,
               isNew: false,
@@ -172,13 +206,23 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
             ? product.sizes.map((s) => ({ label: s.label, stock: s.stock ?? 0 }))
             : [],
         productVariants:
-          Array.isArray(product?.variants)
-            ? product.variants.map((v) => ({
-                colorName: v?.color?.name || "",
-                colorHex: v?.color?.hexCode || "#000000",
-                sizeLabel: v?.sizeLabel || "",
-                price: v?.price != null ? String(v.price) : "",
-              }))
+          Array.isArray(product?.colors)
+            ? product.colors.map((c) => {
+                const sizeStocks = {};
+                (product.variants || [])
+                  .filter((v) => v?.colorId === c.id)
+                  .forEach((v) => {
+                    const size = String(v?.sizeLabel || "").trim().toUpperCase();
+                    if (size && SIZE_OPTIONS.includes(size)) {
+                      sizeStocks[size] = String(v?.stock ?? 0);
+                    }
+                  });
+                return {
+                  colorName: c?.name || "",
+                  colorHex: c?.hexCode || "#000000",
+                  sizeStocks,
+                };
+              })
             : [],
         existingImages: product?.images || [],
         existingVideos: product?.videos && Array.isArray(product.videos) ? product.videos : [],
@@ -210,26 +254,29 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
       return;
     }
 
+    if (!(parseFloat(formData.price) > 0)) {
+      toast.error("Please enter a valid product price");
+      return;
+    }
+
     for (const block of productVariants) {
       if (!block.colorName?.trim()) {
         toast.error("Please enter color name for each variant block");
         return;
       }
       if ((block.images?.length || 0) === 0 && (block.existingImages?.length || 0) === 0) {
-        toast.error(`Please upload images for color \"${block.colorName}\"`);
+        toast.error(`Please upload images for color "${block.colorName}"`);
         return;
       }
-      if (!block.sizes?.length) {
-        toast.error(`Please add at least one size for color \"${block.colorName}\"`);
+      const selectedSizes = Object.keys(block.sizeStocks || {});
+      if (selectedSizes.length === 0) {
+        toast.error(`Please select at least one size for color "${block.colorName}"`);
         return;
       }
-      for (const s of block.sizes) {
-        if (!s.sizeLabel?.trim()) {
-          toast.error(`Size label is required in color \"${block.colorName}\"`);
-          return;
-        }
-        if (!(parseFloat(s.price) > 0)) {
-          toast.error(`Valid price is required for ${block.colorName} - ${s.sizeLabel || "size"}`);
+      for (const size of selectedSizes) {
+        const stockValue = Math.max(0, parseInt(block.sizeStocks[size], 10) || 0);
+        if (!Number.isFinite(stockValue) || stockValue < 0) {
+          toast.error(`Invalid stock value for ${block.colorName} - ${size}`);
           return;
         }
       }
@@ -249,7 +296,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
       formDataToSend.append("isNew", formData.isNew);
       formDataToSend.append("isTrending", formData.isTrending);
       formDataToSend.append("isReady60Min", formData.isReady60Min);
-      formDataToSend.append("originalPrice", "");
+      formDataToSend.append("originalPrice", formData.originalPrice || "");
       
       // Auto-generate keywords from product name if not already set
       let keywordsArray = [];
@@ -271,18 +318,22 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
             return productVariants
               .filter((b) => b.colorName?.trim())
               .map((b, index) => {
-                const existingPreview = b.existingImages?.[0] || "";
-                let photoUrl = existingPreview;
-                if (b.images?.length) {
-                  photoUrl = `__COLOR_UPLOAD_${uploadIndex}__`;
-                  formDataToSend.append("colorPhotos", b.images[0]);
+                const existingPhotoUrls = Array.isArray(b.existingImages)
+                  ? b.existingImages.filter(Boolean)
+                  : [];
+                const uploadedPhotoTokens = [];
+                for (const file of b.images || []) {
+                  uploadedPhotoTokens.push(`__COLOR_UPLOAD_${uploadIndex}__`);
+                  formDataToSend.append("colorPhotos", file);
                   uploadIndex += 1;
                 }
+                const photoUrls = [...existingPhotoUrls, ...uploadedPhotoTokens];
                 return {
                   key: b.id,
                   name: b.colorName.trim(),
                   hexCode: b.colorHex || "#000000",
-                  photoUrl,
+                  photoUrl: photoUrls[0] || "",
+                  photoUrls,
                   order: index,
                 };
               });
@@ -292,24 +343,20 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
 
       const variantsPayload = [];
       for (const b of productVariants) {
-        for (const s of b.sizes || []) {
+        const selectedSizes = Object.keys(b.sizeStocks || {});
+        for (const sizeLabel of selectedSizes) {
           variantsPayload.push({
             colorKey: b.id,
             colorName: b.colorName,
-            sizeLabel: s.sizeLabel?.trim() || "",
-            price: parseFloat(s.price) || 0,
-            originalPrice: s.originalPrice != null && s.originalPrice !== "" ? parseFloat(s.originalPrice) : null,
-            stock: Math.max(0, parseInt(s.stock, 10) || 0),
-            sku: (s.sku || "").trim() || null,
+            sizeLabel,
+            price: parseFloat(formData.price) || 0,
+            originalPrice: formData.originalPrice != null && formData.originalPrice !== "" ? parseFloat(formData.originalPrice) : null,
+            stock: Math.max(0, parseInt(b.sizeStocks[sizeLabel], 10) || 0),
+            sku: null,
           });
         }
       }
       formDataToSend.append("variants", JSON.stringify(variantsPayload));
-
-      const allVariantImages = productVariants.flatMap((b) => b.images || []);
-      allVariantImages.forEach((file) => {
-        formDataToSend.append("images", file);
-      });
 
       // Keep DB clean from legacy fruit weight payloads.
       formDataToSend.append(
@@ -351,6 +398,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
         setFormData({
           name: "",
           description: "",
+          price: "",
           badge: "",
           isFestival: false,
           isNew: false,
@@ -385,6 +433,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
     setFormData({
       name: "",
       description: "",
+      price: "",
       badge: "",
       isFestival: false,
       isNew: false,
@@ -429,7 +478,6 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
         images: [],
         imagePreviews: [],
         existingImages: [],
-        sizes: [{ sizeLabel: "", price: "", originalPrice: "", stock: "0", sku: "" }],
         collapsed: false,
       },
     ]);
@@ -447,28 +495,26 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
     setProductVariants((prev) => prev.map((v) => (v.id === id ? { ...v, collapsed: !v.collapsed } : v)));
   };
 
-  const addSizeToVariant = (id) => {
-    setProductVariants((prev) => prev.map((v) => (
-      v.id === id
-        ? { ...v, sizes: [...(v.sizes || []), { sizeLabel: "", price: "", originalPrice: "", stock: "0", sku: "" }] }
-        : v
-    )));
-  };
-
-  const removeSizeFromVariant = (id, index) => {
+  const toggleVariantSize = (id, sizeLabel, checked) => {
     setProductVariants((prev) => prev.map((v) => {
       if (v.id !== id) return v;
-      const next = (v.sizes || []).filter((_, i) => i !== index);
-      return { ...v, sizes: next.length ? next : [{ sizeLabel: "", price: "", originalPrice: "", stock: "0", sku: "" }] };
+      const nextSizeStocks = { ...(v.sizeStocks || {}) };
+      if (checked) nextSizeStocks[sizeLabel] = nextSizeStocks[sizeLabel] ?? "0";
+      else delete nextSizeStocks[sizeLabel];
+      return { ...v, sizeStocks: nextSizeStocks };
     }));
   };
 
-  const updateVariantSize = (id, index, patch) => {
+  const updateVariantSizeStock = (id, sizeLabel, stockValue) => {
     setProductVariants((prev) => prev.map((v) => {
       if (v.id !== id) return v;
-      const sizes = [...(v.sizes || [])];
-      sizes[index] = { ...sizes[index], ...patch };
-      return { ...v, sizes };
+      return {
+        ...v,
+        sizeStocks: {
+          ...(v.sizeStocks || {}),
+          [sizeLabel]: stockValue,
+        },
+      };
     }));
   };
 
@@ -490,11 +536,6 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
           }
         : v
     )));
-  };
-
-  const handleColorPhotoChange = (id, file) => {
-    if (!file) return;
-    handleVariantImagesChange(id, [file]);
   };
 
   const pickColorFromImageClick = (id, e) => {
@@ -529,13 +570,15 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
         .map((id) => categories.find((c) => c.id === id)?.name)
         .filter(Boolean)
         .join(", ");
-      const sizeVariant = productVariants
-        .flatMap((v) => v.sizes || [])
-        .map((s) => s.sizeLabel)
+      const sizeVariant = [...new Set(productVariants.flatMap((v) => Object.keys(v.sizeStocks || {})))]
         .filter(Boolean)
         .join(", ");
+      const allPrices = [parseFloat(formData.price)].filter((p) => Number.isFinite(p) && p > 0);
       let priceRange = "";
-      if (sizeSellingPrice) priceRange = `₹${sizeSellingPrice}`;
+      if (allPrices.length > 0) {
+        const minPrice = Math.min(...allPrices);
+        priceRange = `₹${minPrice}`;
+      }
       const payload = {
         product_name: formData.name.trim(),
         category: categoryNames || "General",
@@ -766,6 +809,35 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Product Price *</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+              className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none transition"
+              style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
+              placeholder="Enter selling price"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">MRP (optional)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.originalPrice}
+              onChange={(e) => setFormData({ ...formData, originalPrice: e.target.value })}
+              className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none transition"
+              style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
+              placeholder="Optional"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Badge (e.g., 60 Min Delivery)</label>
             <input
               type="text"
@@ -932,77 +1004,44 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
                       )}
 
                       <div className="border rounded-lg p-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--muted)" }}>
-                        <div className="flex items-center justify-between mb-2">
-                          <label className="text-xs font-semibold text-gray-700">Sizes For This Variant</label>
-                          <button
-                            type="button"
-                            onClick={() => addSizeToVariant(variant.id)}
-                            className="px-2 py-1 bg-gray-200 rounded text-xs font-semibold hover:bg-gray-300"
-                          >
-                            + Add Size
-                          </button>
-                        </div>
-                        <div className="space-y-2">
-                          {(variant.sizes || []).map((sizeRow, sIndex) => (
-                            <div key={`${variant.id}-size-${sIndex}`} className="grid grid-cols-1 md:grid-cols-5 gap-2 items-end">
-                              <input
-                                type="text"
-                                value={sizeRow.sizeLabel}
-                                onChange={(e) => updateVariantSize(variant.id, sIndex, { sizeLabel: e.target.value })}
-                                placeholder="Size (e.g., M, 500gm)"
-                                className="px-3 py-2 border-2 rounded-lg focus:outline-none"
-                                style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
-                              />
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={sizeRow.price}
-                                onChange={(e) => updateVariantSize(variant.id, sIndex, { price: e.target.value })}
-                                placeholder="Price"
-                                className="px-3 py-2 border-2 rounded-lg focus:outline-none"
-                                style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
-                              />
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={sizeRow.originalPrice}
-                                onChange={(e) => updateVariantSize(variant.id, sIndex, { originalPrice: e.target.value })}
-                                placeholder="MRP (optional)"
-                                className="px-3 py-2 border-2 rounded-lg focus:outline-none"
-                                style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
-                              />
-                              <input
-                                type="number"
-                                min="0"
-                                value={sizeRow.stock}
-                                onChange={(e) => updateVariantSize(variant.id, sIndex, { stock: e.target.value })}
-                                placeholder="Stock"
-                                className="px-3 py-2 border-2 rounded-lg focus:outline-none"
-                                style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
-                              />
-                              <div className="flex gap-2">
+                        <label className="text-xs font-semibold text-gray-700 block mb-2">Available Sizes</label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                          {SIZE_OPTIONS.map((size) => {
+                            const checked = Object.prototype.hasOwnProperty.call(variant.sizeStocks || {}, size);
+                            return (
+                              <label key={`${variant.id}-${size}`} className="inline-flex items-center gap-2 px-2 py-1 rounded border bg-white" style={{ borderColor: "var(--border)" }}>
                                 <input
-                                  type="text"
-                                  value={sizeRow.sku}
-                                  onChange={(e) => updateVariantSize(variant.id, sIndex, { sku: e.target.value })}
-                                  placeholder="SKU (optional)"
-                                  className="w-full px-3 py-2 border-2 rounded-lg focus:outline-none"
-                                  style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(e) => toggleVariantSize(variant.id, size, e.target.checked)}
+                                  className="w-4 h-4"
                                 />
-                                <button
-                                  type="button"
-                                  onClick={() => removeSizeFromVariant(variant.id, sIndex)}
-                                  className="px-2 py-2 bg-red-500 text-white rounded text-xs font-semibold"
-                                >
-                                  X
-                                </button>
-                              </div>
-                            </div>
-                          ))}
+                                <span className="text-xs font-medium" style={{ color: "var(--foreground)" }}>{size}</span>
+                              </label>
+                            );
+                          })}
                         </div>
+
+                        {Object.keys(variant.sizeStocks || {}).length > 0 && (
+                          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                            {SIZE_OPTIONS.filter((size) => Object.prototype.hasOwnProperty.call(variant.sizeStocks || {}, size)).map((size) => (
+                              <div key={`${variant.id}-${size}-stock`} className="flex items-center gap-2">
+                                <span className="text-xs font-semibold w-10" style={{ color: "var(--foreground)" }}>{size}</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={variant.sizeStocks?.[size] ?? "0"}
+                                  onChange={(e) => updateVariantSizeStock(variant.id, size, e.target.value)}
+                                  className="w-full px-2 py-1.5 border rounded-lg text-sm"
+                                  style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
+                                  placeholder="Stock"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
+
                     </div>
                   )}
                 </div>
