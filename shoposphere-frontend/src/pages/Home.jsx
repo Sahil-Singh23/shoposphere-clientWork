@@ -18,7 +18,6 @@ export default function Home() {
   const [trendingProducts, setTrendingProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [reels, setReels] = useState([]);
-  const [banners, setBanners] = useState([]);
   const [topRatedProducts, setTopRatedProducts] = useState([]);
   const [buyAgainIds, setBuyAgainIds] = useState([]);
   const [visibleProductsCount, setVisibleProductsCount] = useState(10);
@@ -26,20 +25,9 @@ export default function Home() {
     categories: true,
     products: true,
     reels: true,
-    banners: true,
   });
   const scrollRef = useRef(null);
   const scrollEndTimerRef = useRef(null);
-  const [heroSlide, setHeroSlide] = useState(0);
-
-  useEffect(() => {
-    // Auto-advance the hero visuals (respect reduced motion where possible).
-    if (typeof window === "undefined") return;
-    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-    if (reduceMotion) return;
-    const t = setInterval(() => setHeroSlide((s) => (s + 1) % 3), 4800);
-    return () => clearInterval(t);
-  }, []);
   
   // Single request for homepage data (faster: 1 round-trip instead of 5)
   useEffect(() => {
@@ -48,7 +36,7 @@ export default function Home() {
       .then((res) => res.json())
       .then((data) => {
         if (!data || data.error) {
-          setLoading((prev) => ({ ...prev, categories: false, products: false, reels: false, banners: false }));
+          setLoading((prev) => ({ ...prev, categories: false, products: false, reels: false }));
           return;
         }
         setCategories(Array.isArray(data.categories) ? data.categories : []);
@@ -56,11 +44,10 @@ export default function Home() {
         setProducts(list);
         setTrendingProducts(list.filter((p) => p.isTrending));
         setReels(Array.isArray(data.reels) ? data.reels : []);
-        setBanners(Array.isArray(data.banners) ? data.banners : []);
-        setLoading((prev) => ({ ...prev, categories: false, products: false, reels: false, banners: false }));
+        setLoading((prev) => ({ ...prev, categories: false, products: false, reels: false }));
       })
       .catch(() => {
-        setLoading((prev) => ({ ...prev, categories: false, products: false, reels: false, banners: false }));
+        setLoading((prev) => ({ ...prev, categories: false, products: false, reels: false }));
       });
     return () => ac.abort();
   }, []);
@@ -168,7 +155,7 @@ export default function Home() {
     else if (sl <= 50) el.scrollLeft = sl + setWidth;
   };
   // Check if any data is still loading
-  const isInitialLoad = loading.categories || loading.products || loading.reels || loading.banners;
+  const isInitialLoad = loading.categories || loading.products || loading.reels;
 
   // Store photos in `public/`: shop1.jpeg … shop6.jpeg. Fallbacks if a file is missing.
   const storeImages = useMemo(
@@ -179,30 +166,6 @@ export default function Home() {
       { src: "/shop4.jpeg", fallbackSrc: "/model.png", alt: "Fruit counter" },
       { src: "/shop5.jpeg", fallbackSrc: "/mins.png", alt: "Shelf details" },
       { src: "/shop6.jpeg", fallbackSrc: "/logo.png", alt: "Visit the store" },
-    ],
-    []
-  );
-
-  const heroFruitStages = useMemo(
-    () => [
-      {
-        blueberries: { objectPosition: "80% 86%", left: "-160px", top: "-120px", scale: 1.16, rotate: "-3deg" },
-        cherries: { objectPosition: "58% 78%", left: "-90px", top: "-70px", scale: 1.12, rotate: "4deg" },
-        frame1: { left: "-120px", top: "30px", scale: 0.34 },
-        frame2: { right: "-140px", bottom: "-10px", scale: 0.36 },
-      },
-      {
-        blueberries: { objectPosition: "78% 82%", left: "-150px", top: "-105px", scale: 1.18, rotate: "1deg" },
-        cherries: { objectPosition: "55% 80%", left: "-70px", top: "-60px", scale: 1.10, rotate: "-6deg" },
-        frame1: { left: "-105px", top: "20px", scale: 0.32 },
-        frame2: { right: "-150px", bottom: "-20px", scale: 0.38 },
-      },
-      {
-        blueberries: { objectPosition: "82% 88%", left: "-170px", top: "-130px", scale: 1.14, rotate: "-1deg" },
-        cherries: { objectPosition: "62% 76%", left: "-105px", top: "-55px", scale: 1.11, rotate: "6deg" },
-        frame1: { left: "-130px", top: "38px", scale: 0.35 },
-        frame2: { right: "-135px", bottom: "-5px", scale: 0.35 },
-      },
     ],
     []
   );

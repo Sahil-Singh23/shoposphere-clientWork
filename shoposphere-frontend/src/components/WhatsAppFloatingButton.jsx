@@ -13,7 +13,7 @@ export default function WhatsAppFloatingButton() {
 
     const msg = productName
       ? `Hi! I want to order ${productName}. ${priceText || ""} Please share available options and delivery details.`
-      : "Hello! I need assistance with fresh fruits and delivery.";
+      : "Hello! I need assistance";
 
     return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
   };

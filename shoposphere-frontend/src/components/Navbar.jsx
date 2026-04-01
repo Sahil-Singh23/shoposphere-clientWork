@@ -136,7 +136,7 @@ export default function Navbar() {
 
     if (typedElementRef.current) {
       typedInstanceRef.current = new Typed(typedElementRef.current, {
-        strings: [" Fresh fruits, delivered to you", " Farm-fresh quality, every time"],
+        strings: [" Trendy outfits, delivered to you", " New-season styles, every day"],
         typeSpeed: 50,
         backSpeed: 30,
         backDelay: 2000,
