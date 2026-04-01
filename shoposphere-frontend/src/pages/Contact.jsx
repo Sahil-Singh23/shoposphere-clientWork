@@ -47,7 +47,7 @@ export default function Contact() {
       <div className="py-16" style={{ background: "var(--gradient-warm)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h1 className="text-5xl font-bold mb-4" style={{ color: "var(--foreground)" }}>
+            <h1 className="text-2xl font-bold mb-4" style={{ color: "var(--foreground)" }}>
               Contact Us
             </h1>
             <p className="text-xl max-w-3xl mx-auto leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
@@ -281,7 +281,7 @@ export default function Contact() {
               className="rounded-xl shadow-lg p-8 text-center hover:shadow-xl transition-all duration-300 group"
               style={{ backgroundColor: "var(--card-white)" }}
             >
-              <div className="text-5xl mb-4">📞</div>
+              <div className="text-2xl mb-4">📞</div>
               <h3 className="text-xl font-bold mb-3" style={{ color: "var(--foreground)" }}>
                 Call Us Now
               </h3>
@@ -306,7 +306,7 @@ export default function Contact() {
               className="rounded-xl shadow-lg p-8 text-center hover:shadow-xl transition-all duration-300 group"
               style={{ backgroundColor: "var(--card-white)" }}
             >
-              <div className="text-5xl mb-4">📧</div>
+              <div className="text-2xl mb-4">📧</div>
               <h3 className="text-xl font-bold mb-3" style={{ color: "var(--foreground)" }}>
                 Email Us
               </h3>
@@ -333,7 +333,7 @@ export default function Contact() {
               className="rounded-xl shadow-lg p-8 text-center hover:shadow-xl transition-all duration-300 group"
               style={{ backgroundColor: "var(--card-white)" }}
             >
-              <div className="text-5xl mb-4">📍</div>
+              <div className="text-2xl mb-4">📍</div>
               <h3 className="text-xl font-bold mb-3" style={{ color: "var(--foreground)" }}>
                 Visit Our Office
               </h3>

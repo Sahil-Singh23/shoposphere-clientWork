@@ -255,7 +255,7 @@ export default function BannerForm({ banner, onSave, onCancel }) {
               value={formData.ctaLink}
               onChange={(e) => setFormData({ ...formData, ctaLink: e.target.value })}
               className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-pink-500 transition"
-              placeholder="e.g., /shop, /occasion/valentines-day"
+              placeholder="e.g., /shop, /categories"
             />
           </div>
         </div>

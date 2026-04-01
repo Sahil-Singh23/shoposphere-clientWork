@@ -120,7 +120,6 @@ export default function ChatBot() {
 
   const quickActions = [
     { label: "Browse Products", action: () => navigate("/categories") },
-    { label: "View Exotic", action: () => navigate("/exotic") },
     { label: "Chat on WhatsApp", action: () => window.open(WHATSAPP_LINK, "_blank") },
   ];
 

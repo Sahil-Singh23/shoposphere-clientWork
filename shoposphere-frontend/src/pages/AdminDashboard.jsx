@@ -10,12 +10,10 @@ import CategoryList from "../components/admin/CategoryList";
 import MessageList from "../components/admin/MessageList";
 import ReelForm from "../components/admin/ReelForm";
 import ReelList from "../components/admin/ReelList";
-import OccasionForm from "../components/admin/OccasionForm";
-import OccasionList from "../components/admin/OccasionList";
 import BannerForm from "../components/admin/BannerForm";
 import BannerList from "../components/admin/BannerList";
 
-const DASHBOARD_TABS = ["products", "categories", "occasions", "banners", "reels", "messages"];
+const DASHBOARD_TABS = ["products", "categories", "banners", "reels", "messages"];
 
 export default function AdminDashboard() {
   const { logout, user } = useAuth();
@@ -36,14 +34,12 @@ export default function AdminDashboard() {
   }, [searchParams, setSearchParams]);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [occasions, setOccasions] = useState([]);
   const [messages, setMessages] = useState([]);
   const [reels, setReels] = useState([]);
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState(null);
   const [editingCategory, setEditingCategory] = useState(null);
-  const [editingOccasion, setEditingOccasion] = useState(null);
   const [editingReel, setEditingReel] = useState(null);
   const [editingBanner, setEditingBanner] = useState(null);
 
@@ -66,9 +62,8 @@ export default function AdminDashboard() {
       const headers = { Authorization: `Bearer ${token}` };
 
       if (activeTab === "products") {
-        const [productsRes, occasionsRes, categoriesRes] = await Promise.all([
+        const [productsRes, categoriesRes] = await Promise.all([
           fetch(`${API}/products`), // Public endpoint, no auth needed
-          fetch(`${API}/occasions/all`, { headers }),
           fetch(`${API}/categories`), // Public endpoint, no auth needed
         ]);
         
@@ -82,14 +77,6 @@ export default function AdminDashboard() {
           setProducts(Array.isArray(productsData) ? productsData : []);
         }
         
-        if (occasionsRes.ok) {
-          const occasionsData = await occasionsRes.json();
-          setOccasions(Array.isArray(occasionsData) ? occasionsData : []);
-        } else if (occasionsRes.status === 401) {
-          toast.error("Session expired. Please login again.");
-          logout();
-        }
-
         if (categoriesRes.ok) {
           const categoriesData = await categoriesRes.json();
           setCategories(Array.isArray(categoriesData) ? categoriesData : []);
@@ -99,15 +86,6 @@ export default function AdminDashboard() {
         if (res.ok) {
           const data = await res.json();
           setCategories(data);
-        }
-      } else if (activeTab === "occasions") {
-        const res = await fetch(`${API}/occasions/all`, { headers });
-        if (res.ok) {
-          const data = await res.json();
-          setOccasions(data);
-        } else if (res.status === 401) {
-          toast.error("Session expired. Please login again.");
-          logout();
         }
       } else if (activeTab === "messages") {
         const res = await fetch(`${API}/contact`, { headers });
@@ -155,11 +133,6 @@ export default function AdminDashboard() {
     loadData();
   };
 
-  const handleOccasionSave = () => {
-    setEditingOccasion(null);
-    loadData();
-  };
-
   const handleReelSave = () => {
     setEditingReel(null);
     loadData();
@@ -173,7 +146,6 @@ export default function AdminDashboard() {
   const tabs = [
     { id: "products", label: "All Fruits", icon: null },
     { id: "categories", label: "Categories", icon: null },
-    { id: "occasions", label: "Exotic", icon: null },
     { id: "banners", label: "Banners", icon: null },
     { id: "reels", label: "Reels", icon: null },
     { id: "orders", label: "Orders", icon: null },
@@ -187,7 +159,6 @@ export default function AdminDashboard() {
     setActiveTab(tabId);
     setEditingProduct(null);
     setEditingCategory(null);
-    setEditingOccasion(null);
     setEditingReel(null);
     setEditingBanner(null);
     if (DASHBOARD_TABS.includes(tabId)) {
@@ -242,7 +213,6 @@ export default function AdminDashboard() {
                 <ProductForm
                   product={editingProduct}
                   categories={categories}
-                  occasions={occasions}
                   onSave={handleProductSave}
                   onCancel={() => setEditingProduct(null)}
                 />
@@ -264,21 +234,6 @@ export default function AdminDashboard() {
                 <CategoryList
                   categories={categories}
                   onEdit={setEditingCategory}
-                  onDelete={loadData}
-                />
-              </div>
-            )}
-
-            {activeTab === "occasions" && (
-              <div>
-                <OccasionForm
-                  occasion={editingOccasion}
-                  onSave={handleOccasionSave}
-                  onCancel={() => setEditingOccasion(null)}
-                />
-                <OccasionList
-                  occasions={occasions}
-                  onEdit={setEditingOccasion}
                   onDelete={loadData}
                 />
               </div>

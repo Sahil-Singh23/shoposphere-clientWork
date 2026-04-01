@@ -52,7 +52,6 @@ function cloneProductForDuplicate(product) {
         })()
       : null,
     categories: product.categories || [],
-    occasions: product.occasions || [],
   };
 }
 

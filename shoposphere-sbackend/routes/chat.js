@@ -7,7 +7,7 @@ const router = express.Router();
 
 const GIFT_BUDDY_SYSTEM_PROMPT = `You are Gift Buddy 🤝🎁, a friendly and helpful Gift Shopping Assistant for an online gift shop.
 
-Your job: help customers find the perfect gift (occasion, recipient, budget, quantity). Be like a real, friendly advisor—not a robot.
+Your job: help customers find the perfect gift (recipient, budget, quantity). Be like a real, friendly advisor-not a robot.
 
 LANGUAGE & TONE (IMPORTANT):
 - Reply ONLY in Hinglish (natural mix of Hindi + English). Example: "Achha choice hai! Ye gifts dekh lo 🎁" or "Budget ke hisaab se ye options best hain."
@@ -16,7 +16,7 @@ LANGUAGE & TONE (IMPORTANT):
 
 GIFT SUGGESTION RULES (CRITICAL):
 - Suggest ONLY 2–4 products. Use ONLY products from LIVE_PRODUCT_DATA. Never invent products or prices.
-- Every suggestion: gift name, why it's good, price range. Match occasion/budget from the user.
+- Every suggestion: gift name, why it's good, price range. Match budget and user needs.
 - If out of stock: "Ye abhi out of stock hai 😕 Par similar options dikhata hoon."
 
 LINKS (IMPORTANT): Product cards with clickable "View" / "Add" links are shown BELOW your message automatically. So:
@@ -32,10 +32,9 @@ RESPONSE FORMAT (JSON only): Reply with exactly this JSON, nothing else:
 - "productIds": Product IDs from LIVE_PRODUCT_DATA only. Max 2–4. Empty [] if no products.
 - Be honest, helpful, and keep it brief.`;
 
-function buildProductContext(products, categories, occasions) {
+function buildProductContext(products) {
   const items = products.map((p) => {
     const cats = (p.categories || []).map((c) => c.name || c).join(", ");
-    const occs = (p.occasions || []).map((o) => o.name || o).join(", ");
     let priceStr = "";
     if (p.sizes && p.sizes.length > 0) {
       const prices = p.sizes.map((s) => s.price);
@@ -49,7 +48,6 @@ function buildProductContext(products, categories, occasions) {
       description: (p.description || "").slice(0, 200),
       price: priceStr,
       categories: cats,
-      occasions: occs,
       isTrending: !!p.isTrending,
       isNew: !!p.isNew,
       isFestival: !!p.isFestival,
@@ -59,10 +57,9 @@ function buildProductContext(products, categories, occasions) {
   return JSON.stringify(items, null, 2);
 }
 
-function buildWelcomeContext(categories, occasions) {
+function buildWelcomeContext(categories) {
   const catNames = (categories || []).map((c) => c.name).filter(Boolean);
-  const occNames = (occasions || []).map((o) => o.name).filter(Boolean);
-  return { categories: catNames, occasions: occNames };
+  return { categories: catNames };
 }
 
 router.post("/", async (req, res) => {
@@ -72,18 +69,16 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "messages array is required" });
     }
 
-    const [productsRaw, categories, occasions] = await Promise.all([
+    const [productsRaw, categories] = await Promise.all([
       prisma.product.findMany({
         where: {},
         include: {
           sizes: true,
           categories: { include: { category: true } },
-          occasions: { include: { occasion: true } },
         },
         orderBy: [{ order: "asc" }, { isTrending: "desc" }, { isNew: "desc" }, { createdAt: "desc" }],
       }),
       prisma.category.findMany({ orderBy: { order: "asc" } }),
-      prisma.occasion.findMany({ where: { isActive: true }, orderBy: { order: "asc" } }),
     ]);
 
     const products = productsRaw.map((p) => {
@@ -96,12 +91,11 @@ router.post("/", async (req, res) => {
         ...p,
         images: imgs,
         categories: (p.categories || []).map((pc) => pc.category),
-        occasions: (p.occasions || []).map((po) => po.occasion),
       };
     });
 
-    const productContext = buildProductContext(products, categories, occasions);
-    const welcomeContext = buildWelcomeContext(categories, occasions);
+    const productContext = buildProductContext(products);
+    const welcomeContext = buildWelcomeContext(categories);
 
     const systemContent = `${GIFT_BUDDY_SYSTEM_PROMPT}
 
@@ -109,7 +103,6 @@ LIVE_PRODUCT_DATA (use these IDs when suggesting products):
 ${productContext}
 
 AVAILABLE_CATEGORIES: ${JSON.stringify(welcomeContext.categories)}
-AVAILABLE_OCCASIONS: ${JSON.stringify(welcomeContext.occasions)}
 `;
 
     // --- Gemini / Gemma (Gemma does not support systemInstruction; pass as first user message, then full history) ---
@@ -153,7 +146,6 @@ AVAILABLE_OCCASIONS: ${JSON.stringify(welcomeContext.occasions)}
         originalPrice: p.originalPrice,
         sizes: (p.sizes || []).map((s) => ({ id: s.id, label: s.label, price: s.price, originalPrice: s.originalPrice })),
         categories: (p.categories || []).map((c) => ({ id: c?.id, name: c?.name })),
-        occasions: (p.occasions || []).map((o) => ({ id: o?.id, name: o?.name })),
         badge: p.badge,
         isTrending: p.isTrending,
         isNew: p.isNew,
@@ -202,10 +194,8 @@ AVAILABLE_OCCASIONS: ${JSON.stringify(welcomeContext.occasions)}
     //     originalPrice: p.originalPrice,
     //     sizes: (p.sizes || []).map((s) => ({ id: s.id, label: s.label, price: s.price, originalPrice: s.originalPrice })),
     //     categories: (p.categories || []).map((c) => ({ id: c?.id, name: c?.name })),
-    //     occasions: (p.occasions || []).map((o) => ({ id: o?.id, name: o?.name })),
     //     badge: p.badge,
     //     isTrending: p.isTrending,
-    //     isNew: p.isNew,
     //   }));
     //   return res.json({
     //     message: parsed.message || raw,

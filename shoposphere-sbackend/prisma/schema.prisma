@@ -88,7 +88,6 @@ model Product {
   categories    ProductCategory[]
   sizes         ProductSize[]
   orderItems    OrderItem[]
-  occasions     ProductOccasion[]
   reels         Reel[]
   cartItems     CartItem[]
   wishlists     Wishlist[]
@@ -244,21 +243,6 @@ model Reel {
   @@index([isFeatured])
 }
 
-model Occasion {
-  id          Int              @id @default(autoincrement())
-  name        String
-  slug        String           @unique
-  description String?          @db.Text
-  imageUrl    String?          @db.Text
-  isActive    Boolean          @default(true)
-  order       Int              @default(0) // For ordering occasions
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  products    ProductOccasion[]
-
-  @@index([order])
-}
-
 model ProductCategory {
   id         Int      @id @default(autoincrement())
   productId  Int
@@ -268,17 +252,6 @@ model ProductCategory {
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@unique([productId, categoryId])
-}
-
-model ProductOccasion {
-  id         Int      @id @default(autoincrement())
-  productId  Int
-  occasionId Int
-
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  occasion   Occasion @relation(fields: [occasionId], references: [id], onDelete: Cascade)
-
-  @@unique([productId, occasionId])
 }
 
 model Cart {

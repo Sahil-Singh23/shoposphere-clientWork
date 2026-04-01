@@ -89,7 +89,7 @@ export default function Cart() {
   return (
     <div className="min-h-screen py-6 px-4 sm:px-6 lg:px-8" style={{ background: "var(--background)" }}>
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8 font-display" style={{ color: "var(--foreground)" }}>Shopping Cart</h1>
+        <h1 className="text-2xl font-bold mb-8 font-display" style={{ color: "var(--foreground)" }}>Shopping Cart</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items */}
@@ -101,7 +101,7 @@ export default function Cart() {
                     {item.productImage ? (
                       <img src={item.productImage} alt={item.productName} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-4xl" aria-hidden>🧺</span>
+                      <span className="text-2xl" aria-hidden>🧺</span>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">

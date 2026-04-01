@@ -18,7 +18,6 @@ router.get("/:productId", cacheMiddleware(10 * 60 * 1000), async (req, res) => {
       where: { id: productId },
       include: {
         categories: { include: { category: true } },
-        occasions: { include: { occasion: true } },
         sizes: true,
       },
     });
@@ -28,13 +27,11 @@ router.get("/:productId", cacheMiddleware(10 * 60 * 1000), async (req, res) => {
     }
 
     const categoryIds = product.categories.map((pc) => pc.category.id);
-    const occasionIds = product.occasions.map((po) => po.occasion.id);
     const priceRange = getPriceRange(product);
 
     const recommendations = await getRecommendationsForProduct(
       productId,
       categoryIds,
-      occasionIds,
       priceRange,
       limit
     );

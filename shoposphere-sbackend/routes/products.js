@@ -11,7 +11,7 @@ const router = express.Router();
 // Get all products (public) - Cached 5 min. Supports ?ids=1,2,3 for bulk fetch (preserves order).
 router.get("/", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
   try {
-    const { category, occasion, isNew, isFestival, isTrending, search, ids: idsParam } = req.query;
+    const { category, isNew, isFestival, isTrending, search, ids: idsParam } = req.query;
     const limitRaw = req.query.limit;
     const offsetRaw = req.query.offset;
     const limit = typeof limitRaw === "string" ? Math.min(Math.max(parseInt(limitRaw, 10) || 0, 0), 50) : 0;
@@ -35,15 +35,6 @@ router.get("/", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
         }
       };
     }
-    if (occasion) {
-      where.occasions = {
-        some: {
-          occasion: {
-            slug: occasion
-          }
-        }
-      };
-    }
     if (isNew === "true") {
       where.isNew = true;
     }
@@ -54,37 +45,12 @@ router.get("/", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
       where.isTrending = true;
     }
     if (search) {
-      // First, try to find matching occasions
-      const matchingOccasions = await prisma.occasion.findMany({
-        where: {
-          OR: [
-            { name: { contains: search } },
-            { slug: { contains: search.toLowerCase().replace(/\s+/g, '-') } },
-          ],
-          isActive: true
-        },
-        select: { id: true }
-      });
-
-      const occasionIds = matchingOccasions.map(o => o.id);
-
-      // Search in name, description, keywords, and occasions
+      // Search in name and description.
       const searchConditions = [
         { name: { contains: search } },
         { description: { contains: search } },
         { name: { startsWith: search } }, // Partial match at start
       ];
-
-      // If matching occasions found, include products linked to those occasions
-      if (occasionIds.length > 0) {
-        searchConditions.push({
-          occasions: {
-            some: {
-              occasionId: { in: occasionIds }
-            }
-          }
-        });
-      }
 
       where.OR = searchConditions;
     }
@@ -94,11 +60,6 @@ router.get("/", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
       categories: {
         include: {
           category: true,
-        },
-      },
-      occasions: {
-        include: {
-          occasion: true,
         },
       },
     };
@@ -140,7 +101,6 @@ router.get("/", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
       videos: p.videos ? JSON.parse(p.videos) : [],
       keywords: p.keywords ? JSON.parse(p.keywords) : [],
       categories: p.categories ? p.categories.map(pc => pc.category) : [],
-      occasions: p.occasions ? p.occasions.map(po => po.occasion) : [],
     }));
 
     res.json(parsed);
@@ -167,7 +127,7 @@ router.get("/top-rated", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
     }
     const products = await prisma.product.findMany({
       where: { id: { in: sorted } },
-      include: { sizes: true, categories: { include: { category: true } }, occasions: { include: { occasion: true } } },
+      include: { sizes: true, categories: { include: { category: true } } },
     });
     const byId = new Map(products.map((p) => [p.id, p]));
     const ordered = sorted.map((id) => byId.get(id)).filter(Boolean);
@@ -177,7 +137,6 @@ router.get("/top-rated", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
       videos: p.videos ? JSON.parse(p.videos) : [],
       keywords: p.keywords ? JSON.parse(p.keywords) : [],
       categories: p.categories ? p.categories.map((pc) => pc.category) : [],
-      occasions: p.occasions ? p.occasions.map((po) => po.occasion) : [],
     }));
     res.json(parsed);
   } catch (error) {
@@ -198,7 +157,6 @@ router.get("/:id/recommendations", cacheMiddleware(10 * 60 * 1000), async (req, 
       where: { id: productId },
       include: {
         categories: { include: { category: true } },
-        occasions: { include: { occasion: true } },
         sizes: true,
       },
     });
@@ -206,12 +164,10 @@ router.get("/:id/recommendations", cacheMiddleware(10 * 60 * 1000), async (req, 
       return res.status(404).json({ error: "Product not found" });
     }
     const categoryIds = product.categories.map((pc) => pc.category.id);
-    const occasionIds = product.occasions.map((po) => po.occasion.id);
     const priceRange = getPriceRange(product);
     const recommendations = await getRecommendationsForProduct(
       productId,
       categoryIds,
-      occasionIds,
       priceRange,
       limit
     );
@@ -221,7 +177,6 @@ router.get("/:id/recommendations", cacheMiddleware(10 * 60 * 1000), async (req, 
       videos: p.videos ? JSON.parse(p.videos) : [],
       keywords: p.keywords ? JSON.parse(p.keywords) : [],
       categories: p.categories ? p.categories.map((pc) => pc.category) : [],
-      occasions: p.occasions ? p.occasions.map((po) => po.occasion) : [],
     }));
     res.json(parsed);
   } catch (error) {
@@ -282,11 +237,6 @@ router.get("/:id", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
           include: {
             category: true
           }
-        },
-        occasions: {
-          include: {
-            occasion: true
-          }
         }
       },
     });
@@ -302,7 +252,6 @@ router.get("/:id", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
       instagramEmbeds: product.instagramEmbeds ? JSON.parse(product.instagramEmbeds) : [],
       keywords: product.keywords ? JSON.parse(product.keywords) : [],
       categories: product.categories ? product.categories.map(pc => pc.category) : [],
-      occasions: product.occasions ? product.occasions.map(po => po.occasion) : [],
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -315,7 +264,7 @@ router.post("/", requireRole("admin"), uploadProductMedia, async (req, res) => {
     // Invalidate products cache on create
     invalidateCache("/products");
     
-    const { name, description, badge, isFestival, isNew, isTrending, isReady60Min, originalPrice, categoryIds, sizes, keywords, occasionIds, existingImages, existingVideos, instagramEmbeds } = req.body;
+    const { name, description, badge, isFestival, isNew, isTrending, isReady60Min, originalPrice, categoryIds, sizes, keywords, existingImages, existingVideos, instagramEmbeds } = req.body;
 
     // Upload images; for duplicate/create, existingImages can provide initial URLs
     let imageUrls = [];
@@ -362,7 +311,6 @@ router.post("/", requireRole("admin"), uploadProductMedia, async (req, res) => {
       return res.status(400).json({ error: "At least one size is required" });
     }
     const categoryIdsArray = categoryIds ? JSON.parse(categoryIds) : [];
-    const occasionIdsArray = occasionIds ? JSON.parse(occasionIds) : [];
 
     const product = await prisma.product.create({
       data: {
@@ -385,11 +333,6 @@ router.post("/", requireRole("admin"), uploadProductMedia, async (req, res) => {
         },
         sizes: {
           create: sizesWithFloatPrices,
-        },
-        occasions: {
-          create: occasionIdsArray.map(occasionId => ({
-            occasionId: Number(occasionId)
-          }))
         }
       },
       include: {
@@ -397,11 +340,6 @@ router.post("/", requireRole("admin"), uploadProductMedia, async (req, res) => {
         categories: {
           include: {
             category: true
-          }
-        },
-        occasions: {
-          include: {
-            occasion: true
           }
         }
       },
@@ -412,7 +350,6 @@ router.post("/", requireRole("admin"), uploadProductMedia, async (req, res) => {
       images: imageUrls,
       videos: videoUrls,
       keywords: keywordsArray,
-      occasions: product.occasions ? product.occasions.map(po => po.occasion) : [],
     });
   } catch (error) {
     console.error("Create product error:", error);
@@ -426,7 +363,7 @@ router.put("/:id", requireRole("admin"), uploadProductMedia, async (req, res) =>
     // Invalidate products cache on update
     invalidateCache("/products");
     
-    const { name, description, badge, isFestival, isNew, isTrending, isReady60Min, originalPrice, categoryIds, sizes, keywords, existingImages, existingVideos, instagramEmbeds, occasionIds } = req.body;
+    const { name, description, badge, isFestival, isNew, isTrending, isReady60Min, originalPrice, categoryIds, sizes, keywords, existingImages, existingVideos, instagramEmbeds } = req.body;
 
     const existingProduct = await prisma.product.findUnique({
       where: { id: Number(req.params.id) },
@@ -477,14 +414,8 @@ router.put("/:id", requireRole("admin"), uploadProductMedia, async (req, res) =>
       where: { productId: Number(req.params.id) },
     });
 
-    // Delete old occasion links
-    await prisma.productOccasion.deleteMany({
-      where: { productId: Number(req.params.id) },
-    });
-
-    // Parse category and occasion IDs
+    // Parse category IDs
     const categoryIdsArray = categoryIds ? JSON.parse(categoryIds) : [];
-    const occasionIdsArray = occasionIds ? JSON.parse(occasionIds) : [];
 
     const product = await prisma.product.update({
       where: { id: Number(req.params.id) },
@@ -508,11 +439,6 @@ router.put("/:id", requireRole("admin"), uploadProductMedia, async (req, res) =>
         },
         sizes: {
           create: sizesWithFloatPrices,
-        },
-        occasions: {
-          create: occasionIdsArray.map(occasionId => ({
-            occasionId: Number(occasionId)
-          }))
         }
       },
       include: {
@@ -520,11 +446,6 @@ router.put("/:id", requireRole("admin"), uploadProductMedia, async (req, res) =>
         categories: {
           include: {
             category: true
-          }
-        },
-        occasions: {
-          include: {
-            occasion: true
           }
         }
       },
@@ -537,7 +458,6 @@ router.put("/:id", requireRole("admin"), uploadProductMedia, async (req, res) =>
       instagramEmbeds: validatedInstagramEmbeds,
       keywords: keywordsArray,
       categories: product.categories ? product.categories.map(pc => pc.category) : [],
-      occasions: product.occasions ? product.occasions.map(po => po.occasion) : [],
     });
   } catch (error) {
     console.error("Update product error:", error);

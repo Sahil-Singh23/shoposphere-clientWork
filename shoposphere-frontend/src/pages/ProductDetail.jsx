@@ -594,7 +594,7 @@ export default function ProductDetail() {
             <aside className="lg:col-span-5">
               <div className="lg:sticky lg:top-6">
                 <div className="rounded-3xl border p-6 shadow-sm" style={{ backgroundColor: "var(--card-white)", borderColor: "var(--border)" }}>
-                  <h1 className="text-xl sm:text-4xl font-extrabold tracking-tight" style={{ color: "oklch(20% .02 340)" }}>
+                  <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight" style={{ color: "oklch(20% .02 340)" }}>
                     {product.name}
                   </h1>
 

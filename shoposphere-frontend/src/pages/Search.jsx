@@ -8,25 +8,20 @@ export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
   const categoryFilter = searchParams.get("category") || "";
-  const occasionFilter = searchParams.get("occasion") || "";
   const [products, setProducts] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [suggestedProducts, setSuggestedProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [occasions, setOccasions] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [showSuggestions, setShowSuggestions] = useState(false);
   
-  // Fetch categories, occasions, and all products for suggestions
+  // Fetch categories and all products for suggestions
   useEffect(() => {
     Promise.all([
       fetch(`${API}/categories`).then(res => res.json()),
-      fetch(`${API}/occasions`).then(res => res.json()),
       fetch(`${API}/products`).then(res => res.json())
     ])
-      .then(([categoriesData, occasionsData, productsData]) => {
+      .then(([categoriesData, productsData]) => {
         setCategories(categoriesData);
-        setOccasions(occasionsData);
         setAllProducts(productsData);
       })
       .catch(error => {
@@ -36,11 +31,9 @@ export default function Search() {
 
   useEffect(() => {
     const performSearch = async () => {
-      setLoading(true);
       const params = new URLSearchParams();
       if (query) params.append("search", query);
       if (categoryFilter) params.append("category", categoryFilter);
-      if (occasionFilter) params.append("occasion", occasionFilter);
 
       const url = `${API}/products?${params.toString()}`;
       
@@ -50,16 +43,15 @@ export default function Search() {
         const safeData = shuffleArray(Array.isArray(data) ? data : []);
         setProducts(safeData);
         
-        // If no results and we have a query, fall back to all products in selected category (and other active filters).
+          // If no results and we have a query, fall back to all products in selected category.
         if (safeData.length === 0 && query) {
           // Prefer fetching from API so it's always accurate.
           const fallbackParams = new URLSearchParams();
           if (categoryFilter) fallbackParams.append("category", categoryFilter);
-          if (occasionFilter) fallbackParams.append("occasion", occasionFilter);
           const fallbackUrl = `${API}/products?${fallbackParams.toString()}`;
 
           let fallbackProducts = [];
-          if (categoryFilter || occasionFilter) {
+          if (categoryFilter) {
             const fallbackRes = await fetch(fallbackUrl);
             const fallbackJson = await fallbackRes.json();
             fallbackProducts = Array.isArray(fallbackJson) ? fallbackJson : [];
@@ -75,13 +67,11 @@ export default function Search() {
         }
       } catch (error) {
         console.error("Error searching products:", error);
-      } finally {
-        setLoading(false);
       }
     };
 
     performSearch();
-  }, [query, categoryFilter, occasionFilter, allProducts]);
+  }, [query, categoryFilter, allProducts]);
 
   const handleCategoryChange = (e) => {
     const newCategory = e.target.value;
@@ -90,17 +80,6 @@ export default function Search() {
       params.set("category", newCategory);
     } else {
       params.delete("category");
-    }
-    setSearchParams(params);
-  };
-
-  const handleOccasionChange = (e) => {
-    const newOccasion = e.target.value;
-    const params = new URLSearchParams(searchParams);
-    if (newOccasion) {
-      params.set("occasion", newOccasion);
-    } else {
-      params.delete("occasion");
     }
     setSearchParams(params);
   };
@@ -146,32 +125,7 @@ export default function Search() {
               </select>
             </div>
 
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-semibold" style={{ color: 'oklch(40% .02 340)' }}>
-                Occasion:
-              </label>
-              <select
-                value={occasionFilter}
-                onChange={handleOccasionChange}
-                className="px-4 py-2 rounded-lg border-2 text-sm transition-all duration-300 focus:outline-none"
-                style={{
-                  borderColor: 'oklch(92% .04 340)',
-                  backgroundColor: 'white',
-                  color: 'oklch(20% .02 340)'
-                }}
-                onFocus={(e) => e.target.style.borderColor = 'oklch(88% .06 340)'}
-                onBlur={(e) => e.target.style.borderColor = 'oklch(92% .04 340)'}
-              >
-                <option value="">All Occasions</option>
-                {occasions.map((occ) => (
-                  <option key={occ.id} value={occ.slug}>
-                    {occ.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {(categoryFilter || occasionFilter) && (
+            {categoryFilter && (
               <button
                 onClick={clearFilters}
                 className="px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300"
@@ -187,20 +141,20 @@ export default function Search() {
             )}
           </div>
 
-          {(query || categoryFilter || occasionFilter) && (
+          {(query || categoryFilter) && (
             <p className="text-lg mb-4" style={{ color: 'oklch(60% .02 340)' }}>
               {products.length > 0 
-                ? `Found ${products.length} product${products.length !== 1 ? 's' : ''}${query ? ` for "${query}"` : ''}${categoryFilter ? ` in ${categories.find(c => c.slug === categoryFilter)?.name || categoryFilter}` : ''}${occasionFilter ? ` for ${occasions.find(o => o.slug === occasionFilter)?.name || occasionFilter}` : ''}`
-                : `No products found${query ? ` for "${query}"` : ''}${categoryFilter ? ` in ${categories.find(c => c.slug === categoryFilter)?.name || categoryFilter}` : ''}${occasionFilter ? ` for ${occasions.find(o => o.slug === occasionFilter)?.name || occasionFilter}` : ''}`
+                ? `Found ${products.length} product${products.length !== 1 ? 's' : ''}${query ? ` for "${query}"` : ''}${categoryFilter ? ` in ${categories.find(c => c.slug === categoryFilter)?.name || categoryFilter}` : ''}`
+                : `No products found${query ? ` for "${query}"` : ''}${categoryFilter ? ` in ${categories.find(c => c.slug === categoryFilter)?.name || categoryFilter}` : ''}`
               }
             </p>
           )}
         </div>
 
-        {!query && !categoryFilter && !occasionFilter ? (
+        {!query && !categoryFilter ? (
           <div className="text-center py-16">
             <div className="inline-block p-6 rounded-full mb-4" style={{ backgroundColor: 'oklch(92% .04 340)' }}>
-              <span className="text-4xl">🔍</span>
+              <span className="text-2xl">🔍</span>
             </div>
             <p className="font-medium" style={{ color: 'oklch(60% .02 340)' }}>
               Enter a search term or select filters to find products
@@ -230,9 +184,6 @@ export default function Search() {
           </div>
         ) : (
           <div className="text-center py-16">
-            <div className="inline-block p-6 rounded-full mb-4" style={{ backgroundColor: 'oklch(92% .04 340)' }}>
-              <span className="text-4xl">😔</span>
-            </div>
             <p className="font-medium mb-2" style={{ color: 'oklch(60% .02 340)' }}>
               No products found
             </p>

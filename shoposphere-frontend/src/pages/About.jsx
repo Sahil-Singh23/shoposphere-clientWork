@@ -5,7 +5,7 @@ export default function About() {
       <div className="py-20" style={{ background: "var(--gradient-warm)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h1 className="text-5xl font-bold mb-6" style={{ color: "var(--foreground)" }}>
+            <h1 className="text-2xl font-bold mb-6" style={{ color: "var(--foreground)" }}>
               Leading Gift Distribution Partner
             </h1>
             <p className="text-xl max-w-3xl mx-auto leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
@@ -19,7 +19,7 @@ export default function About() {
       {/* Leadership Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Leadership</h2>
+          <h2 className="text-2xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Leadership</h2>
           <p className="text-lg" style={{ color: "var(--foreground-muted)" }}>
             Meet Our Director
           </p>
@@ -48,7 +48,7 @@ export default function About() {
           </div>
 
           <div className="text-center p-8 rounded-xl" style={{ backgroundColor: "var(--muted)" }}>
-            <div className="text-6xl mb-4">👤</div>
+            <div className="text-2xl mb-4">👤</div>
             <h3 className="text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>FOUNDER & MANAGING DIRECTOR</h3>
             <p className="text-lg italic mb-4" style={{ color: "var(--foreground-muted)" }}>
               "Our mission is to bridge the gap between manufacturers and customers, providing authentic products 
@@ -85,7 +85,7 @@ export default function About() {
       {/* Achievements */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Our Achievements</h2>
+          <h2 className="text-2xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Our Achievements</h2>
           <p className="text-lg" style={{ color: "var(--foreground-muted)" }}>
             Numbers that reflect our commitment to excellence and customer satisfaction
           </p>
@@ -93,22 +93,22 @@ export default function About() {
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="text-center p-6 rounded-xl shadow-md" style={{ backgroundColor: "var(--muted)" }}>
-            <div className="text-5xl font-bold mb-2" style={{ color: "var(--foreground)" }}>500+</div>
+            <div className="text-2xl font-bold mb-2" style={{ color: "var(--foreground)" }}>500+</div>
             <div className="text-sm font-semibold mb-1" style={{ color: "var(--foreground)" }}>Brand Partners</div>
             <div className="text-xs" style={{ color: "var(--foreground-muted)" }}>Premium brands worldwide</div>
           </div>
           <div className="text-center p-6 rounded-xl shadow-md" style={{ backgroundColor: "var(--muted)" }}>
-            <div className="text-5xl font-bold mb-2" style={{ color: "var(--foreground)" }}>10K+</div>
+            <div className="text-2xl font-bold mb-2" style={{ color: "var(--foreground)" }}>10K+</div>
             <div className="text-sm font-semibold mb-1" style={{ color: "var(--foreground)" }}>Orders Fulfilled</div>
             <div className="text-xs" style={{ color: "var(--foreground-muted)" }}>Successful deliveries</div>
           </div>
           <div className="text-center p-6 rounded-xl shadow-md" style={{ backgroundColor: "var(--muted)" }}>
-            <div className="text-5xl font-bold mb-2" style={{ color: "var(--foreground)" }}>150+</div>
+            <div className="text-2xl font-bold mb-2" style={{ color: "var(--foreground)" }}>150+</div>
             <div className="text-sm font-semibold mb-1" style={{ color: "var(--foreground)" }}>Factory Partners</div>
             <div className="text-xs" style={{ color: "var(--foreground-muted)" }}>Direct manufacturing sources</div>
           </div>
           <div className="text-center p-6 rounded-xl shadow-md" style={{ backgroundColor: "var(--muted)" }}>
-            <div className="text-5xl font-bold mb-2" style={{ color: "var(--foreground)" }}>98%</div>
+            <div className="text-2xl font-bold mb-2" style={{ color: "var(--foreground)" }}>98%</div>
             <div className="text-sm font-semibold mb-1" style={{ color: "var(--foreground)" }}>Client Satisfaction</div>
             <div className="text-xs" style={{ color: "var(--foreground-muted)" }}>Happy customers</div>
           </div>
@@ -119,7 +119,7 @@ export default function About() {
       <div className="py-16" style={{ backgroundColor: "var(--background)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Our Core Values</h2>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Our Core Values</h2>
             <p className="text-lg" style={{ color: "var(--foreground-muted)" }}>
               The principles that guide our business and define our commitment to customers
             </p>
@@ -127,14 +127,14 @@ export default function About() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-              <div className="text-4xl mb-4">✨</div>
+              <div className="text-2xl mb-4">✨</div>
               <h3 className="text-xl font-bold mb-3" style={{ color: "var(--foreground)" }}>Quality Assurance</h3>
               <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
                 Every product undergoes strict quality checks before reaching our customers
               </p>
             </div>
             <div className="bg-white rounded-xl shadow-lg p-6 text-center">
-              <div className="text-4xl mb-4">💰</div>
+              <div className="text-2xl mb-4">💰</div>
               <h3 className="text-xl font-bold mb-3" style={{ color: "var(--foreground)" }}>Competitive Pricing</h3>
               <p className="text-sm leading-relaxed" style={{ color: "var(--foreground-muted)" }}>
                 Direct factory partnerships ensure the best prices in the market
@@ -169,7 +169,7 @@ export default function About() {
       {/* Why Choose Us */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Why Choose GiftChoice</h2>
+          <h2 className="text-2xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Why Choose GiftChoice</h2>
           <p className="text-lg" style={{ color: "var(--foreground-muted)" }}>
             We offer unique advantages that set us apart in the gift distribution industry
           </p>

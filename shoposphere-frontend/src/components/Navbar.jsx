@@ -35,7 +35,6 @@ export default function Navbar() {
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [allProducts, setAllProducts] = useState([]);
   const [searchSuggestions, setSearchSuggestions] = useState([]);
@@ -57,16 +56,10 @@ export default function Navbar() {
   const navItems = [
     { path: "/", label: "Home" },
     { path: "/categories", label: "Categories" },
-    { path: "/organic", label: "Organic" },
-    { path: "/gift-boxes", label: "About" },
-    { path: "/blog", label: "Contact" },
+    { path: "/new", label: "New Arrivals" },
+    { path: "/about", label: "About" },
+    { path: "/contact", label: "Contact" },
   ];
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   // Track viewport so we only mount ONE typed placeholder element at a time
   useEffect(() => {

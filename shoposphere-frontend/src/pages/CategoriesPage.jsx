@@ -7,24 +7,19 @@ import ProductCard from "../components/ProductCard";
 
 export default function CategoriesPage() {
   const { slug } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const occasionFilter = searchParams.get("occasion") || "";
+  const [searchParams] = useSearchParams();
   const trendingFilter = searchParams.get("trending") === "true";
   const [categories, setCategories] = useState([]);
-  const [occasions, setOccasions] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const categoryScrollRef = useRef(null);
   
   useEffect(() => {
-    Promise.all([
-      fetch(`${API}/categories`).then(res => res.json()),
-      fetch(`${API}/occasions`).then(res => res.json())
-    ])
-      .then(([categoriesData, occasionsData]) => {
+    fetch(`${API}/categories`)
+      .then((res) => res.json())
+      .then((categoriesData) => {
         setCategories(categoriesData);
-        setOccasions(occasionsData);
         if (slug) {
           const category = categoriesData.find(cat => cat.slug === slug);
           if (category) {
@@ -45,28 +40,25 @@ export default function CategoriesPage() {
 
   useEffect(() => {
     if (slug && selectedCategory) {
-      fetchCategoryProducts(selectedCategory.slug, occasionFilter, trendingFilter);
+      fetchCategoryProducts(selectedCategory.slug, trendingFilter);
       return;
     }
 
-    // No slug (e.g. /categories): show all products (optionally filtered by occasion or trending)
+    // No slug (e.g. /categories): show all products (optionally filtered by trending)
     if (!slug) {
-      fetchAllProducts(occasionFilter, trendingFilter);
+      fetchAllProducts(trendingFilter);
       return;
     }
 
     setProducts([]);
     setLoading(false);
-  }, [selectedCategory, slug, occasionFilter, trendingFilter]);
+  }, [selectedCategory, slug, trendingFilter]);
 
-  const fetchCategoryProducts = async (categorySlug, occasion = "", trending = false) => {
+  const fetchCategoryProducts = async (categorySlug, trending = false) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       params.append("category", categorySlug);
-      if (occasion) {
-        params.append("occasion", occasion);
-      }
       if (trending) {
         params.append("trending", "true");
       }
@@ -84,13 +76,10 @@ export default function CategoriesPage() {
     }
   };
 
-  const fetchAllProducts = async (occasion = "", trending = false) => {
+  const fetchAllProducts = async (trending = false) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (occasion) {
-        params.append("occasion", occasion);
-      }
       if (trending) {
         params.append("trending", "true");
       }
@@ -115,25 +104,8 @@ export default function CategoriesPage() {
   const handleCategoryClick = (category) => {
     setSelectedCategory(category);
     if (category.slug) {
-      fetchCategoryProducts(category.slug, occasionFilter, trendingFilter);
+      fetchCategoryProducts(category.slug, trendingFilter);
     }
-  };
-
-  const handleOccasionChange = (e) => {
-    const newOccasion = e.target.value;
-    const params = new URLSearchParams(searchParams);
-    if (newOccasion) {
-      params.set("occasion", newOccasion);
-    } else {
-      params.delete("occasion");
-    }
-    setSearchParams(params);
-  };
-
-  const clearOccasionFilter = () => {
-    const params = new URLSearchParams(searchParams);
-    params.delete("occasion");
-    setSearchParams(params);
   };
 
   const scrollCategories = (direction) => {
@@ -158,15 +130,12 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="min-h-screen py-16 bg-page-products">
+    <div className="min-h-screen py-8 bg-page-products">
       <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <h2 className="font-display text-4xl font-bold mb-4" style={{ color: "var(--foreground)" }}>
+          <h2 className="font-display text-2xl font-bold mb-4" style={{ color: "var(--foreground)" }}>
             Shop by Category
           </h2>
-          <p className="text-lg" style={{ color: "var(--foreground-muted)" }}>
-            FreshFruit — Browse our wide range of categories
-          </p>
         </div>
 
         {/* Categories (horizontal scroll like Home) */}
@@ -239,41 +208,6 @@ export default function CategoriesPage() {
                 </p>
               )}
 
-              {/* Occasion Filter */}
-              <div className="flex flex-wrap items-center gap-4 mb-6">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
-                    Filter by Occasion:
-                  </label>
-                  <select
-                    value={occasionFilter}
-                    onChange={handleOccasionChange}
-                    className="px-4 py-2 rounded-lg border-2 border-design text-sm transition-all duration-300 focus:outline-none focus:border-[var(--primary)] bg-[var(--background)] text-design-foreground"
-                  >
-                    <option value="">All Occasions</option>
-                    {occasions.map((occ) => (
-                      <option key={occ.id} value={occ.slug}>
-                        {occ.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {occasionFilter && (
-                  <button
-                    onClick={clearOccasionFilter}
-                    className="px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 bg-[var(--background)] text-design-foreground border border-design hover:bg-design-secondary"
-                  >
-                    Clear Filter
-                  </button>
-                )}
-              </div>
-
-              {occasionFilter && (
-                <p className="text-sm mb-4" style={{ color: "var(--foreground-muted)" }}>
-                  Showing products for {occasions.find(o => o.slug === occasionFilter)?.name || occasionFilter}
-                </p>
-              )}
             </div>
             {products.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-6">
@@ -302,41 +236,6 @@ export default function CategoriesPage() {
                 {trendingFilter ? "Trending Products" : "All Products"}
               </h3>
 
-              {/* Occasion Filter (still useful on /categories) */}
-              <div className="flex flex-wrap items-center gap-4 mb-6">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
-                    Filter by Occasion:
-                  </label>
-                  <select
-                    value={occasionFilter}
-                    onChange={handleOccasionChange}
-                    className="px-4 py-2 rounded-lg border-2 border-design text-sm transition-all duration-300 focus:outline-none focus:border-[var(--primary)] bg-[var(--background)] text-design-foreground"
-                  >
-                    <option value="">All Occasions</option>
-                    {occasions.map((occ) => (
-                      <option key={occ.id} value={occ.slug}>
-                        {occ.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {occasionFilter && (
-                  <button
-                    onClick={clearOccasionFilter}
-                    className="px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 bg-[var(--background)] text-design-foreground border border-design hover:bg-design-secondary"
-                  >
-                    Clear Filter
-                  </button>
-                )}
-              </div>
-
-              {occasionFilter && (
-                <p className="text-sm mb-4" style={{ color: "var(--foreground-muted)" }}>
-                  Showing products for {occasions.find(o => o.slug === occasionFilter)?.name || occasionFilter}
-                </p>
-              )}
             </div>
 
             {products.length > 0 ? (

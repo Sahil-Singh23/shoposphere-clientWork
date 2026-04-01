@@ -91,7 +91,7 @@ export default function ImageUpload({ images, existingImages, onImagesChange, on
           onChange={handleChange}
           className="hidden"
         />
-        <div className="text-4xl mb-3">📸</div>
+        <div className="text-2xl mb-3">📸</div>
         <p className="text-gray-600 mb-2">
           Drag and drop images here, or{" "}
           <button

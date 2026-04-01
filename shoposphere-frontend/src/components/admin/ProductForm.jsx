@@ -8,7 +8,7 @@ import { useToast } from "../../context/ToastContext";
 // Treat as "edit" only when product has a valid id (duplicate passes product with id null/undefined)
 const isEditProduct = (p) => p && (p.id != null && p.id !== "");
 
-export default function ProductForm({ product, categories, occasions = [], onSave, onCancel }) {
+export default function ProductForm({ product, categories, onSave, onCancel }) {
   const toast = useToast();
   const isEdit = isEditProduct(product);
   const [formData, setFormData] = useState({
@@ -32,7 +32,6 @@ export default function ProductForm({ product, categories, occasions = [], onSav
   const [existingVideos, setExistingVideos] = useState([]);
   const [instagramEmbeds, setInstagramEmbeds] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
-  const [selectedOccasions, setSelectedOccasions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [, setLoadingSizeOptions] = useState(false);
   const [generatingDescription, setGeneratingDescription] = useState(false);
@@ -49,11 +48,10 @@ export default function ProductForm({ product, categories, occasions = [], onSav
       sizeMrp,
       existingImages,
       selectedCategories,
-      selectedOccasions,
       // For new images, treat any selection as "dirty"
       imagesSelectedCount: images.length,
     });
-  }, [formData, sizes, sizeSellingPrice, sizeMrp, existingImages, selectedCategories, selectedOccasions, images.length]);
+  }, [formData, sizes, sizeSellingPrice, sizeMrp, existingImages, selectedCategories, images.length]);
 
   const isDirty = initialSnapshotRef.current !== "" && snapshot !== initialSnapshotRef.current;
 
@@ -92,11 +90,6 @@ export default function ProductForm({ product, categories, occasions = [], onSav
       } else {
         setSelectedCategories([]);
       }
-      setSelectedOccasions(
-        product.occasions && product.occasions.length > 0
-          ? product.occasions.map((o) => o.occasionId || o.occasion?.id || o.id)
-          : []
-      );
     } else {
       // Reset form
       setFormData({
@@ -117,7 +110,6 @@ export default function ProductForm({ product, categories, occasions = [], onSav
       setExistingImages([]);
       setInstagramEmbeds([]);
       setSelectedCategories([]);
-      setSelectedOccasions([]);
     }
 
     // snapshot after state settles
@@ -165,10 +157,6 @@ export default function ProductForm({ product, categories, occasions = [], onSav
             ? product.categories.map((pc) => pc.categoryId || pc.category?.id || pc.id)
             : product?.categoryId
             ? [product.categoryId]
-            : [],
-        selectedOccasions:
-          product?.occasions && product.occasions.length > 0
-            ? product.occasions.map((o) => o.occasionId || o.occasion?.id || o.id)
             : [],
         imagesSelectedCount: 0,
       });
@@ -256,8 +244,6 @@ export default function ProductForm({ product, categories, occasions = [], onSav
       );
       formDataToSend.append("hasSinglePrice", "false");
       formDataToSend.append("singlePrice", "");
-      
-      formDataToSend.append("occasionIds", JSON.stringify(selectedOccasions));
 
       if (product && existingImages.length > 0) {
         formDataToSend.append("existingImages", JSON.stringify(existingImages));
@@ -308,7 +294,6 @@ export default function ProductForm({ product, categories, occasions = [], onSav
         setImages([]);
         setExistingImages([]);
         setSelectedCategories([]);
-        setSelectedOccasions([]);
         initialSnapshotRef.current = "";
       } else {
         toast.error(data.error || data.message || "Failed to save product");
@@ -347,7 +332,6 @@ export default function ProductForm({ product, categories, occasions = [], onSav
     setVideos([]);
     setExistingVideos([]);
     setSelectedCategories([]);
-    setSelectedOccasions([]);
     initialSnapshotRef.current = "";
     onCancel?.();
   };
@@ -424,10 +408,6 @@ export default function ProductForm({ product, categories, occasions = [], onSav
         .map((id) => categories.find((c) => c.id === id)?.name)
         .filter(Boolean)
         .join(", ");
-      const occasionNames = selectedOccasions
-        .map((id) => occasions.find((o) => o.id === id)?.name)
-        .filter(Boolean)
-        .join(", ");
       const sizeVariant = sizes.map((s) => s.label).filter(Boolean).join(", ");
       let priceRange = "";
       if (sizeSellingPrice) priceRange = `₹${sizeSellingPrice}`;
@@ -439,7 +419,7 @@ export default function ProductForm({ product, categories, occasions = [], onSav
         color: "",
         target_audience: "",
         price_range: priceRange || "",
-        use_case: occasionNames || "",
+        use_case: "",
         features: formData.keywords || formData.badge || "",
         language: descriptionLanguage,
       };
@@ -713,43 +693,6 @@ export default function ProductForm({ product, categories, occasions = [], onSav
             </div>
           </div>
         </div>
-
-        {occasions.length > 0 && (
-          <div>
-            <label className="block text-sm font-semibold mb-2" style={{ color: "var(--foreground)" }}>Exotic (optional)</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 p-3 rounded-xl border-2" style={{ borderColor: "var(--border)", backgroundColor: "var(--muted)" }}>
-              {[...occasions]
-                .filter((o) => o.isActive !== false)
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((occ) => {
-                  const isSelected = selectedOccasions.includes(occ.id);
-                  return (
-                    <label
-                      key={occ.id}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition ${
-                        isSelected ? "border-pink-500 bg-pink-50" : "border-gray-200 bg-white hover:border-pink-300"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => {
-                          if (isSelected) {
-                            setSelectedOccasions(selectedOccasions.filter((id) => id !== occ.id));
-                          } else {
-                            setSelectedOccasions([...selectedOccasions, occ.id]);
-                          }
-                        }}
-                        className="w-4 h-4 text-pink-600 rounded focus:ring-pink-500 shrink-0"
-                      />
-                      <span className="text-sm font-medium text-gray-700 truncate">{occ.name}</span>
-                    </label>
-                  );
-                })}
-            </div>
-            <p className="text-xs mt-1" style={{ color: "var(--muted)" }}>Select exotic items this product is suitable for (optional)</p>
-          </div>
-        )}
 
         <ImageUpload
           images={images}

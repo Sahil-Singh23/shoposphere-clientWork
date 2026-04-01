@@ -1,54 +1,12 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
-import { API } from "../api";
-import { useToast } from "../context/ToastContext";
 
 export default function Footer() {
-  const toast = useToast();
-  const [email, setEmail] = useState("");
-  const [subscribing, setSubscribing] = useState(false);
-
-  const handleSubscribe = async (e) => {
-    e.preventDefault();
-    
-    if (!email || !email.includes("@")) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
-
-    setSubscribing(true);
-    try {
-      const res = await fetch(`${API}/contact`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: "Newsletter Subscriber",
-          email: email,
-          phone: null,
-          message: `Newsletter subscription request from ${email}`,
-        }),
-      });
-
-      if (res.ok) {
-        toast.success("Thank you for subscribing! We'll keep you updated.");
-        setEmail("");
-      } else {
-        const data = await res.json();
-        toast.error(data.error || "Failed to subscribe. Please try again.");
-      }
-    } catch {
-      toast.error("Error subscribing. Please try again.");
-    } finally {
-      setSubscribing(false);
-    }
-  };
-
   const linkMap = {
     "Home": "/",
-    "About Us": "/gift-boxes",
-    "Contact": "/blog",
+    "About Us": "/about",
+    "Contact": "/contact",
     "Shop": "/categories",
-    "New Arrivals": "/organic",
+    "New Arrivals": "/new",
   };
 
     return (

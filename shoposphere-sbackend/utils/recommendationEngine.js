@@ -30,14 +30,13 @@ export function getProductPrice(product) {
 const productInclude = {
   sizes: true,
   categories: { include: { category: true } },
-  occasions: { include: { occasion: true } },
 };
 
 /**
  * Main recommendation algorithm.
  * Priority: 1) Same category 2) Similar price 3) Popular (trending) 4) High-rated 5) Fallbacks.
  */
-export async function getRecommendationsForProduct(productId, categoryIds, occasionIds, priceRange, limit) {
+export async function getRecommendationsForProduct(productId, categoryIds, priceRange, limit) {
   const recommendations = [];
   const seen = new Set([productId]);
 
@@ -71,27 +70,7 @@ export async function getRecommendationsForProduct(productId, categoryIds, occas
     }
   }
 
-  // Priority 2: Same occasion
-  if (recommendations.length < limit && occasionIds.length > 0) {
-    const sameOccasion = await prisma.product.findMany({
-      where: {
-        id: { not: productId },
-        occasions: { some: { occasionId: { in: occasionIds } } },
-      },
-      include: productInclude,
-      orderBy: [{ isTrending: "desc" }, { createdAt: "desc" }],
-      take: limit * 2,
-    });
-    for (const p of sameOccasion) {
-      if (recommendations.length >= limit) break;
-      if (!seen.has(p.id)) {
-        recommendations.push(p);
-        seen.add(p.id);
-      }
-    }
-  }
-
-  // Priority 3: Popular (trending)
+  // Priority 2: Popular (trending)
   if (recommendations.length < limit) {
     const trending = await prisma.product.findMany({
       where: { id: { not: productId }, isTrending: true },
@@ -108,7 +87,7 @@ export async function getRecommendationsForProduct(productId, categoryIds, occas
     }
   }
 
-  // Priority 4: High-rated (products with reviews, by average rating)
+  // Priority 3: High-rated (products with reviews, by average rating)
   if (recommendations.length < limit) {
     const grouped = await prisma.review.groupBy({
       by: ["productId"],
@@ -137,7 +116,7 @@ export async function getRecommendationsForProduct(productId, categoryIds, occas
     }
   }
 
-  // Priority 5: New products
+  // Priority 4: New products
   if (recommendations.length < limit) {
     const newProducts = await prisma.product.findMany({
       where: { id: { not: productId }, isNew: true },
@@ -154,7 +133,7 @@ export async function getRecommendationsForProduct(productId, categoryIds, occas
     }
   }
 
-  // Priority 6: Any product
+  // Priority 5: Any product
   if (recommendations.length < limit) {
     const anyProducts = await prisma.product.findMany({
       where: { id: { not: productId } },
