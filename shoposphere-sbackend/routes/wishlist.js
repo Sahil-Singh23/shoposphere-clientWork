@@ -13,7 +13,7 @@ router.get("/", requireCustomerAuth, async (req, res) => {
       orderBy: { createdAt: "desc" },
       include: {
         product: {
-          include: { sizes: true },
+          include: { variants: true, colors: true },
         },
       },
     });

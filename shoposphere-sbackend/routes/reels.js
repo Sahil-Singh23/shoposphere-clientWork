@@ -14,7 +14,8 @@ router.get("/", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
       include: {
         product: {
           include: {
-            sizes: true,
+            variants: true,
+            colors: true,
             categories: {
               include: {
                 category: true,
@@ -38,7 +39,8 @@ router.get("/all", requireRole("admin"), async (req, res) => {
       include: {
         product: {
           include: {
-            sizes: true,
+            variants: true,
+            colors: true,
             categories: {
               include: {
                 category: true,

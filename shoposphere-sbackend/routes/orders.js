@@ -140,7 +140,9 @@ router.post("/create", optionalCustomerAuth, async (req, res) => {
           items: {
             create: items.map((item) => ({
               productId: item.productId,
+              variantId: item.variantId ?? null,
               productName: item.productName,
+              colorName: item.colorName ?? null,
               sizeLabel: item.sizeLabel,
               quantity: item.quantity,
               price: Number(item.price),

@@ -18,7 +18,8 @@ router.get("/:productId", cacheMiddleware(10 * 60 * 1000), async (req, res) => {
       where: { id: productId },
       include: {
         categories: { include: { category: true } },
-        sizes: true,
+        variants: true,
+        colors: true,
       },
     });
 

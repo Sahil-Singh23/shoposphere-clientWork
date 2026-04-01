@@ -101,7 +101,7 @@ export const uploadReelFiles = multer({
   },
 });
 
-// Product media: images (field "images") + videos (field "videos")
+// Product media: images + videos + color-specific photos
 export const uploadProductMedia = multer({
   storage: storage,
   limits: {
@@ -116,6 +116,7 @@ export const uploadProductMedia = multer({
   },
 }).fields([
   { name: "images", maxCount: 10 },
+  { name: "colorPhotos", maxCount: 30 },
   { name: "videos", maxCount: 5 },
 ]);
 

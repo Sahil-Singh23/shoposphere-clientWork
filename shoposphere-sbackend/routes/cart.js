@@ -23,30 +23,38 @@ function optionalCustomerAuth(req, res, next) {
   next();
 }
 
-/** Get stock for a single variant (size or product-level). */
-function getVariantStock(product, item) {
-  if (item.productSizeId != null && product.sizes?.length) {
-    const size = product.sizes.find((s) => s.id === item.productSizeId);
-    if (size) return Math.max(0, Number(size.stock ?? 0));
-    return 0;
-  }
-  return Math.max(0, Number(product.stock ?? 0));
+function getIncomingVariantId(payload = {}) {
+  const raw = payload.variantId ?? payload.productVariantId ?? payload.productSizeId ?? payload.sizeId ?? null;
+  if (raw == null || raw === "" || raw === 0) return null;
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-/** Hydrate cart items to frontend shape: id, productId, productName, productImage, sizeId, sizeLabel, price, quantity, subtotal, stock (variant-specific) */
+/** Hydrate cart items to frontend shape with variant metadata. */
 async function hydrateCartItems(items) {
   if (!items?.length) return [];
   const productIds = [...new Set(items.map((i) => i.productId))];
+  const variantIds = [...new Set(items.map((i) => i.variantId).filter((id) => id != null))];
+
   const products = await prisma.product.findMany({
     where: { id: { in: productIds } },
-    include: { sizes: true },
+    include: { colors: true },
   });
+  const variants = await prisma.productVariant.findMany({
+    where: { id: { in: variantIds } },
+    include: { color: true },
+  });
+
   const productMap = new Map(products.map((p) => [p.id, p]));
+  const variantMap = new Map(variants.map((v) => [v.id, v]));
 
   return items
     .map((item) => {
       const product = productMap.get(item.productId);
       if (!product) return null;
+      const variant = item.variantId != null ? variantMap.get(item.variantId) : null;
+      if (!variant || variant.productId !== product.id) return null;
+
       const images = (() => {
         try {
           const raw = product.images;
@@ -56,31 +64,24 @@ async function hydrateCartItems(items) {
           return [];
         }
       })();
-      const productImage = images.length ? images[0] : null;
-
-      let sizeLabel = "Standard";
-      let price = 0;
-      let sizeId = 0;
-
-      if (item.productSizeId != null) {
-        const size = product.sizes.find((s) => s.id === item.productSizeId);
-        if (!size) return null;
-        sizeLabel = size.label;
-        price = parseFloat(size.price);
-        sizeId = size.id;
-      } else {
-        return null;
-      }
+      const productImage = variant.color?.photoUrl || (images.length ? images[0] : null);
+      const sizeLabel = variant.sizeLabel || "Standard";
+      const price = parseFloat(variant.price || 0);
+      const variantId = variant.id;
 
       const quantity = Math.max(1, item.quantity);
       const subtotal = price * quantity;
-      const stock = getVariantStock(product, item);
+      const stock = Math.max(0, Number(variant.stock ?? 0));
       return {
         id: String(item.id),
         productId: product.id,
         productName: product.name,
         productImage,
-        sizeId,
+        sizeId: variantId,
+        variantId,
+        sku: variant.sku,
+        colorName: variant.color?.name || null,
+        colorHex: variant.color?.hexCode || null,
         sizeLabel,
         price,
         quantity,
@@ -160,37 +161,43 @@ router.get("/", optionalCustomerAuth, async (req, res) => {
   }
 });
 
-// POST /cart/items — add or update item: { productId, productSizeId: number, quantity }
+// POST /cart/items — add or update item: { productId, variantId, quantity }
 router.post("/items", optionalCustomerAuth, async (req, res) => {
   try {
-    const { productId, productSizeId = null, quantity = 1 } = req.body || {};
+    const { productId, quantity = 1 } = req.body || {};
+    const variantId = getIncomingVariantId(req.body || {});
     if (!productId || quantity < 1) {
       return res.status(400).json({ error: "productId and positive quantity required" });
     }
+    if (!variantId) {
+      return res.status(400).json({ error: "variantId is required" });
+    }
+
     const cart = req.customerUserId
       ? await getOrCreateCartByUserId(req.customerUserId)
       : await getOrCreateCart(getSessionId(req));
 
-    const product = await prisma.product.findUnique({
-      where: { id: Number(productId) },
-      include: { sizes: true },
+    const variant = await prisma.productVariant.findUnique({
+      where: { id: variantId },
+      include: { product: true },
     });
-    if (!product) return res.status(404).json({ error: "Product not found" });
+    if (!variant || variant.productId !== Number(productId)) {
+      return res.status(404).json({ error: "Variant not found for this product" });
+    }
 
-    const sizeIdForStock = productSizeId === undefined || productSizeId === null ? null : Number(productSizeId);
-    const variantStock = getVariantStock(product, {
-      productSizeId: sizeIdForStock,
-    });
+    const variantStock = Math.max(0, Number(variant.stock ?? 0));
     if (variantStock <= 0) {
       return res.status(400).json({ error: "This variant is out of stock" });
     }
+
     const currentQtySameVariant = cart.items
       .filter(
         (i) =>
           i.productId === Number(productId) &&
-          (i.productSizeId ?? null) === sizeIdForStock
+          (i.variantId ?? null) === variantId
       )
       .reduce((sum, i) => sum + i.quantity, 0);
+
     if (currentQtySameVariant + quantity > variantStock) {
       return res.status(400).json({
         error: `Only ${variantStock} unit(s) available for this variant`,
@@ -198,20 +205,11 @@ router.post("/items", optionalCustomerAuth, async (req, res) => {
       });
     }
 
-    // Validate size-based product
-    const sizeId = productSizeId === undefined || productSizeId === null ? null : Number(productSizeId);
-    if (sizeId !== null) {
-      const size = product.sizes.find((s) => s.id === sizeId);
-      if (!size) return res.status(400).json({ error: "Invalid product size" });
-    } else {
-      return res.status(400).json({ error: "productSizeId is required" });
-    }
-
     const existing = await prisma.cartItem.findFirst({
       where: {
         cartId: cart.id,
         productId: Number(productId),
-        productSizeId: sizeId,
+        variantId,
       },
     });
 
@@ -226,7 +224,7 @@ router.post("/items", optionalCustomerAuth, async (req, res) => {
         data: {
           cartId: cart.id,
           productId: Number(productId),
-          productSizeId: sizeId,
+          variantId,
           quantity,
         },
       });
@@ -261,17 +259,23 @@ router.patch("/items/:id", optionalCustomerAuth, async (req, res) => {
 
     const product = await prisma.product.findUnique({
       where: { id: existing.productId },
-      include: { sizes: true },
+      select: { id: true },
     });
     if (!product) return res.status(404).json({ error: "Product not found" });
-    const variantStock = getVariantStock(product, {
-      productSizeId: existing.productSizeId,
+    const variant = await prisma.productVariant.findUnique({
+      where: { id: Number(existing.variantId) },
+      select: { stock: true, productId: true },
     });
+    if (!variant || variant.productId !== existing.productId) {
+      return res.status(400).json({ error: "Selected variant is no longer available" });
+    }
+    const variantStock = Math.max(0, Number(variant.stock ?? 0));
+
     const otherQtySameVariant = cart.items
       .filter(
         (i) =>
           i.productId === existing.productId &&
-          (i.productSizeId ?? null) === (existing.productSizeId ?? null) &&
+          (i.variantId ?? null) === (existing.variantId ?? null) &&
           i.id !== id
       )
       .reduce((sum, i) => sum + i.quantity, 0);
@@ -374,7 +378,7 @@ router.post("/merge", optionalCustomerAuth, async (req, res) => {
           where: {
             cartId: userCart.id,
             productId: gi.productId,
-            productSizeId: gi.productSizeId,
+            variantId: gi.variantId,
           },
         });
         if (existing) {
@@ -387,7 +391,7 @@ router.post("/merge", optionalCustomerAuth, async (req, res) => {
             data: {
               cartId: userCart.id,
               productId: gi.productId,
-              productSizeId: gi.productSizeId,
+              variantId: gi.variantId,
               quantity: gi.quantity,
             },
           });
@@ -423,7 +427,10 @@ router.post("/sync", async (req, res) => {
     const productIds = [...new Set(items.map((item) => item.productId))];
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
-      include: { sizes: true, categories: { include: { category: true } } },
+      include: {
+        variants: { include: { color: true } },
+        categories: { include: { category: true } },
+      },
     });
 
     const productsMap = {};
@@ -439,18 +446,21 @@ router.post("/sync", async (req, res) => {
       .map((item) => {
         const product = productsMap[item.productId];
         if (!product) return null;
-        const size = product.sizes.find((s) => s.id === item.sizeId);
-        if (!size) return null;
+        const variantId = getIncomingVariantId(item);
+        const variant = product.variants.find((v) => v.id === variantId);
+        if (!variant) return null;
         return {
-          id: `${item.productId}-${item.sizeId}`,
+          id: `${item.productId}-${variant.id}`,
           productId: product.id,
           productName: product.name,
-          productImage: product.images?.length ? product.images[0] : null,
-          sizeId: size.id,
-          sizeLabel: size.label,
-          price: parseFloat(size.price),
+          productImage: variant.color?.photoUrl || (product.images?.length ? product.images[0] : null),
+          sizeId: variant.id,
+          variantId: variant.id,
+          sizeLabel: variant.sizeLabel,
+          colorName: variant.color?.name || null,
+          price: parseFloat(variant.price),
           quantity: item.quantity,
-          subtotal: parseFloat(size.price) * item.quantity,
+          subtotal: parseFloat(variant.price) * item.quantity,
         };
       })
       .filter((item) => item !== null);

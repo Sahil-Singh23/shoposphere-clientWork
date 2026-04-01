@@ -36,8 +36,8 @@ function buildProductContext(products) {
   const items = products.map((p) => {
     const cats = (p.categories || []).map((c) => c.name || c).join(", ");
     let priceStr = "";
-    if (p.sizes && p.sizes.length > 0) {
-      const prices = p.sizes.map((s) => s.price);
+    if (p.variants && p.variants.length > 0) {
+      const prices = p.variants.map((v) => v.price);
       const min = Math.min(...prices);
       const max = Math.max(...prices);
       priceStr = min === max ? `₹${min}` : `₹${min} - ₹${max}`;
@@ -73,7 +73,8 @@ router.post("/", async (req, res) => {
       prisma.product.findMany({
         where: {},
         include: {
-          sizes: true,
+          variants: { include: { color: true } },
+          colors: true,
           categories: { include: { category: true } },
         },
         orderBy: [{ order: "asc" }, { isTrending: "desc" }, { isNew: "desc" }, { createdAt: "desc" }],
@@ -144,7 +145,15 @@ AVAILABLE_CATEGORIES: ${JSON.stringify(welcomeContext.categories)}
         description: (p.description || "").slice(0, 200),
         images: p.images || [],
         originalPrice: p.originalPrice,
-        sizes: (p.sizes || []).map((s) => ({ id: s.id, label: s.label, price: s.price, originalPrice: s.originalPrice })),
+        variants: (p.variants || []).map((v) => ({
+          id: v.id,
+          sizeLabel: v.sizeLabel,
+          price: v.price,
+          originalPrice: v.originalPrice,
+          stock: v.stock,
+          colorName: v.color?.name || null,
+        })),
+        sizes: (p.variants || []).map((v) => ({ id: v.id, label: v.sizeLabel, price: v.price, originalPrice: v.originalPrice })),
         categories: (p.categories || []).map((c) => ({ id: c?.id, name: c?.name })),
         badge: p.badge,
         isTrending: p.isTrending,
@@ -192,7 +201,7 @@ AVAILABLE_CATEGORIES: ${JSON.stringify(welcomeContext.categories)}
     //     description: (p.description || "").slice(0, 200),
     //     images: p.images || [],
     //     originalPrice: p.originalPrice,
-    //     sizes: (p.sizes || []).map((s) => ({ id: s.id, label: s.label, price: s.price, originalPrice: s.originalPrice })),
+    //     sizes: (p.variants || []).map((v) => ({ id: v.id, label: v.sizeLabel, price: v.price, originalPrice: v.originalPrice })),
     //     categories: (p.categories || []).map((c) => ({ id: c?.id, name: c?.name })),
     //     badge: p.badge,
     //     isTrending: p.isTrending,

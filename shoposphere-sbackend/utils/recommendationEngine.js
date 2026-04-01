@@ -5,8 +5,8 @@ import prisma from "../prisma.js";
  */
 export function getPriceRange(product) {
   let basePrice = 0;
-  if (product.sizes && product.sizes.length > 0) {
-    const prices = product.sizes.map((s) => parseFloat(s.price));
+  if (product.variants && product.variants.length > 0) {
+    const prices = product.variants.map((v) => parseFloat(v.price));
     basePrice = Math.min(...prices);
   }
   const tolerance = basePrice * 0.2;
@@ -21,14 +21,15 @@ export function getPriceRange(product) {
  * Get product price (for filtering)
  */
 export function getProductPrice(product) {
-  if (product.sizes && product.sizes.length > 0) {
-    return Math.min(...product.sizes.map((s) => parseFloat(s.price)));
+  if (product.variants && product.variants.length > 0) {
+    return Math.min(...product.variants.map((v) => parseFloat(v.price)));
   }
   return 0;
 }
 
 const productInclude = {
-  sizes: true,
+  variants: true,
+  colors: true,
   categories: { include: { category: true } },
 };
 

@@ -7,6 +7,159 @@ import { validateInstagramEmbeds } from "../utils/instagram.js";
 import { getPriceRange, getRecommendationsForProduct } from "../utils/recommendationEngine.js";
 
 const router = express.Router();
+const COLOR_UPLOAD_TOKEN_PREFIX = "__COLOR_UPLOAD_";
+
+function deriveSizesFromVariants(variants = []) {
+  const byLabel = new Map();
+  for (const v of variants) {
+    if (!v?.sizeLabel) continue;
+    const key = String(v.sizeLabel).trim();
+    if (!key) continue;
+    if (!byLabel.has(key)) {
+      byLabel.set(key, {
+        id: v.id,
+        label: key,
+        price: Number(v.price || 0),
+        originalPrice: v.originalPrice != null ? Number(v.originalPrice) : null,
+        stock: Math.max(0, Number(v.stock || 0)),
+      });
+      continue;
+    }
+    const current = byLabel.get(key);
+    const nextPrice = Number(v.price || 0);
+    if (nextPrice < current.price) {
+      current.price = nextPrice;
+      current.id = v.id;
+      current.originalPrice = v.originalPrice != null ? Number(v.originalPrice) : current.originalPrice;
+    }
+    current.stock += Math.max(0, Number(v.stock || 0));
+  }
+  return [...byLabel.values()];
+}
+
+function normalizeProductResponse(p) {
+  return {
+    ...p,
+    images: p.images ? JSON.parse(p.images) : [],
+    videos: p.videos ? JSON.parse(p.videos) : [],
+    instagramEmbeds: p.instagramEmbeds ? JSON.parse(p.instagramEmbeds) : [],
+    keywords: p.keywords ? JSON.parse(p.keywords) : [],
+    categories: p.categories ? p.categories.map((pc) => pc.category) : [],
+    sizes: deriveSizesFromVariants(p.variants || []),
+  };
+}
+
+function buildVariantsFromSizes(sizesArray = [], productName = "SKU") {
+  return sizesArray
+    .filter((size) => String(size?.label || "").trim() !== "")
+    .map((size, idx) => {
+      const label = String(size.label).trim();
+      const price = parseFloat(size.price) || 0;
+      const originalPrice = size.originalPrice != null && size.originalPrice !== "" ? parseFloat(size.originalPrice) : null;
+      const stock = Math.max(0, parseInt(size.stock, 10) || 0);
+      const safeName = String(productName || "SKU")
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 24);
+      const base = safeName || "SKU";
+      const random = Math.random().toString(36).slice(2, 8).toUpperCase();
+
+      return {
+        sizeLabel: label,
+        price,
+        originalPrice,
+        stock,
+        sku: `${base}-${idx + 1}-${random}`,
+      };
+    });
+}
+
+function parseJsonArray(raw) {
+  if (raw == null || raw === "") return [];
+  if (Array.isArray(raw)) return raw;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeColorInput(colorsArray = []) {
+  return colorsArray
+    .map((c, idx) => ({
+      key: c?.key != null && String(c.key).trim() !== "" ? String(c.key).trim() : `c-${idx + 1}`,
+      name: String(c?.name || "").trim(),
+      hexCode: String(c?.hexCode || "").trim() || "#000000",
+      photoUrl: String(c?.photoUrl || "").trim(),
+      order: Number.isInteger(Number(c?.order)) ? Number(c.order) : idx,
+    }))
+    .filter((c) => c.name && c.photoUrl);
+}
+
+function normalizeVariantInput(variantsArray = [], productName = "SKU") {
+  return variantsArray
+    .map((v, idx) => {
+      const sizeLabel = String(v?.sizeLabel || v?.label || "").trim();
+      const price = parseFloat(v?.price) || 0;
+      const originalPrice = v?.originalPrice != null && v?.originalPrice !== "" ? parseFloat(v.originalPrice) : null;
+      const stock = Math.max(0, parseInt(v?.stock, 10) || 0);
+      const explicitSku = String(v?.sku || "").trim();
+      const safeName = String(productName || "SKU")
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 24);
+      const base = safeName || "SKU";
+      const random = Math.random().toString(36).slice(2, 8).toUpperCase();
+      const sku = explicitSku || `${base}-${idx + 1}-${random}`;
+
+      return {
+        sizeLabel,
+        price,
+        originalPrice,
+        stock,
+        sku,
+        colorKey: v?.colorKey != null ? String(v.colorKey).trim() : "",
+        colorName: v?.colorName != null ? String(v.colorName).trim() : "",
+        colorId: v?.colorId != null && Number.isInteger(Number(v.colorId)) ? Number(v.colorId) : null,
+      };
+    })
+    .filter((v) => v.sizeLabel && v.price > 0);
+}
+
+function didVariantSpecifyColor(v) {
+  return Boolean(v.colorId || v.colorKey || v.colorName);
+}
+
+async function resolveColorPhotos(colorsToCreate = [], colorPhotoFiles = []) {
+  if (!colorsToCreate.length) return colorsToCreate;
+
+  const uploadedUrls = [];
+  for (const file of colorPhotoFiles) {
+    const url = await getImageUrl(file);
+    uploadedUrls.push(url);
+  }
+
+  let fallbackCursor = 0;
+  return colorsToCreate.map((c) => {
+    let resolved = c.photoUrl;
+    if (resolved?.startsWith(COLOR_UPLOAD_TOKEN_PREFIX) && resolved.endsWith("__")) {
+      const idxRaw = resolved.slice(COLOR_UPLOAD_TOKEN_PREFIX.length, -2);
+      const idx = Number(idxRaw);
+      if (Number.isInteger(idx) && idx >= 0 && idx < uploadedUrls.length) {
+        resolved = uploadedUrls[idx];
+      } else {
+        resolved = "";
+      }
+    }
+    if (!resolved && fallbackCursor < uploadedUrls.length) {
+      resolved = uploadedUrls[fallbackCursor++];
+    }
+    return { ...c, photoUrl: resolved };
+  });
+}
 
 // Get all products (public) - Cached 5 min. Supports ?ids=1,2,3 for bulk fetch (preserves order).
 router.get("/", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
@@ -56,7 +209,8 @@ router.get("/", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
     }
 
     const include = {
-      sizes: true,
+      variants: { include: { color: true } },
+      colors: true,
       categories: {
         include: {
           category: true,
@@ -95,13 +249,7 @@ router.get("/", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
     }
 
     // Parse JSON fields
-    const parsed = products.map(p => ({
-      ...p,
-      images: p.images ? JSON.parse(p.images) : [],
-      videos: p.videos ? JSON.parse(p.videos) : [],
-      keywords: p.keywords ? JSON.parse(p.keywords) : [],
-      categories: p.categories ? p.categories.map(pc => pc.category) : [],
-    }));
+    const parsed = products.map(normalizeProductResponse);
 
     res.json(parsed);
   } catch (error) {
@@ -127,17 +275,15 @@ router.get("/top-rated", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
     }
     const products = await prisma.product.findMany({
       where: { id: { in: sorted } },
-      include: { sizes: true, categories: { include: { category: true } } },
+      include: {
+        variants: { include: { color: true } },
+        colors: true,
+        categories: { include: { category: true } },
+      },
     });
     const byId = new Map(products.map((p) => [p.id, p]));
     const ordered = sorted.map((id) => byId.get(id)).filter(Boolean);
-    const parsed = ordered.map((p) => ({
-      ...p,
-      images: p.images ? JSON.parse(p.images) : [],
-      videos: p.videos ? JSON.parse(p.videos) : [],
-      keywords: p.keywords ? JSON.parse(p.keywords) : [],
-      categories: p.categories ? p.categories.map((pc) => pc.category) : [],
-    }));
+    const parsed = ordered.map(normalizeProductResponse);
     res.json(parsed);
   } catch (error) {
     console.error("Top-rated products error:", error);
@@ -157,7 +303,8 @@ router.get("/:id/recommendations", cacheMiddleware(10 * 60 * 1000), async (req, 
       where: { id: productId },
       include: {
         categories: { include: { category: true } },
-        sizes: true,
+        variants: { include: { color: true } },
+        colors: true,
       },
     });
     if (!product) {
@@ -171,13 +318,7 @@ router.get("/:id/recommendations", cacheMiddleware(10 * 60 * 1000), async (req, 
       priceRange,
       limit
     );
-    const parsed = recommendations.map((p) => ({
-      ...p,
-      images: p.images ? JSON.parse(p.images) : [],
-      videos: p.videos ? JSON.parse(p.videos) : [],
-      keywords: p.keywords ? JSON.parse(p.keywords) : [],
-      categories: p.categories ? p.categories.map((pc) => pc.category) : [],
-    }));
+    const parsed = recommendations.map(normalizeProductResponse);
     res.json(parsed);
   } catch (error) {
     console.error("Product recommendations error:", error);
@@ -232,7 +373,8 @@ router.get("/:id", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
     const product = await prisma.product.findUnique({
       where: { id: Number(req.params.id) },
       include: { 
-        sizes: true,
+        variants: { include: { color: true } },
+        colors: true,
         categories: {
           include: {
             category: true
@@ -245,14 +387,7 @@ router.get("/:id", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    res.json({
-      ...product,
-      images: product.images ? JSON.parse(product.images) : [],
-      videos: product.videos ? JSON.parse(product.videos) : [],
-      instagramEmbeds: product.instagramEmbeds ? JSON.parse(product.instagramEmbeds) : [],
-      keywords: product.keywords ? JSON.parse(product.keywords) : [],
-      categories: product.categories ? product.categories.map(pc => pc.category) : [],
-    });
+    res.json(normalizeProductResponse(product));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -264,7 +399,24 @@ router.post("/", requireRole("admin"), uploadProductMedia, async (req, res) => {
     // Invalidate products cache on create
     invalidateCache("/products");
     
-    const { name, description, badge, isFestival, isNew, isTrending, isReady60Min, originalPrice, categoryIds, sizes, keywords, existingImages, existingVideos, instagramEmbeds } = req.body;
+    const {
+      name,
+      description,
+      badge,
+      isFestival,
+      isNew,
+      isTrending,
+      isReady60Min,
+      originalPrice,
+      categoryIds,
+      sizes,
+      variants,
+      colors,
+      keywords,
+      existingImages,
+      existingVideos,
+      instagramEmbeds,
+    } = req.body;
 
     // Upload images; for duplicate/create, existingImages can provide initial URLs
     let imageUrls = [];
@@ -279,6 +431,7 @@ router.post("/", requireRole("admin"), uploadProductMedia, async (req, res) => {
       const url = await getImageUrl(file);
       imageUrls.push(url);
     }
+    const colorPhotoFiles = req.files?.colorPhotos || [];
     // Upload videos; existingVideos can provide initial URLs (e.g. duplicate)
     let videoUrls = [];
     if (existingVideos) {
@@ -294,59 +447,120 @@ router.post("/", requireRole("admin"), uploadProductMedia, async (req, res) => {
     }
 
     // Parse sizes, keywords, and Instagram embeds
-    const sizesArray = sizes ? JSON.parse(sizes) : [];
-    const keywordsArray = keywords ? JSON.parse(keywords) : [];
-    const instagramEmbedsArray = instagramEmbeds ? JSON.parse(instagramEmbeds) : [];
+    const sizesArray = parseJsonArray(sizes);
+    const variantsArrayRaw = parseJsonArray(variants);
+    const colorsArrayRaw = parseJsonArray(colors);
+    const keywordsArray = parseJsonArray(keywords);
+    const instagramEmbedsArray = parseJsonArray(instagramEmbeds);
     const validatedInstagramEmbeds = validateInstagramEmbeds(instagramEmbedsArray);
 
-    // Convert price strings to floats for sizes; support originalPrice (MRP) and stock
-    const sizesWithFloatPrices = sizesArray.map(size => ({
-      label: size.label,
-      price: parseFloat(size.price) || 0,
-      originalPrice: size.originalPrice != null && size.originalPrice !== "" ? parseFloat(size.originalPrice) : null,
-      stock: Math.max(0, parseInt(size.stock, 10) || 0),
-    }));
+    let colorsToCreate = normalizeColorInput(colorsArrayRaw);
+    colorsToCreate = await resolveColorPhotos(colorsToCreate, colorPhotoFiles);
+    colorsToCreate = colorsToCreate.filter((c) => c.name && c.photoUrl);
+    const hasExplicitVariants = variantsArrayRaw.length > 0;
+    const variantsToCreate = hasExplicitVariants
+      ? normalizeVariantInput(variantsArrayRaw, name)
+      : buildVariantsFromSizes(sizesArray, name);
 
-    if (!sizesWithFloatPrices.length) {
-      return res.status(400).json({ error: "At least one size is required" });
+    if (!variantsToCreate.length) {
+      return res.status(400).json({ error: "At least one variant is required" });
     }
-    const categoryIdsArray = categoryIds ? JSON.parse(categoryIds) : [];
 
-    const product = await prisma.product.create({
-      data: {
-        name,
-        description,
-        badge: badge || null,
-        isFestival: isFestival === "true" || isFestival === true,
-        isNew: isNew === "true" || isNew === true,
-        isTrending: isTrending === "true" || isTrending === true,
-        isReady60Min: isReady60Min === "true" || isReady60Min === true,
-        originalPrice: originalPrice != null && originalPrice !== "" ? parseFloat(originalPrice) : null,
-        images: JSON.stringify(imageUrls),
-        videos: videoUrls.length > 0 ? JSON.stringify(videoUrls) : null,
-        instagramEmbeds: validatedInstagramEmbeds.length > 0 ? JSON.stringify(validatedInstagramEmbeds) : null,
-        keywords: JSON.stringify(keywordsArray),
-        categories: {
-          create: categoryIdsArray.map(categoryId => ({
-            categoryId: Number(categoryId)
-          }))
+    if (colorsToCreate.length > 0) {
+      imageUrls = [...new Set(colorsToCreate.map((c) => c.photoUrl).filter(Boolean))];
+    }
+    const categoryIdsArray = parseJsonArray(categoryIds);
+
+    const skuSet = new Set();
+    for (const v of variantsToCreate) {
+      const skuKey = String(v.sku).toUpperCase();
+      if (skuSet.has(skuKey)) {
+        return res.status(400).json({ error: `Duplicate SKU in request: ${v.sku}` });
+      }
+      skuSet.add(skuKey);
+    }
+
+    const product = await prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({
+        data: {
+          name,
+          description,
+          badge: badge || null,
+          isFestival: isFestival === "true" || isFestival === true,
+          isNew: isNew === "true" || isNew === true,
+          isTrending: isTrending === "true" || isTrending === true,
+          isReady60Min: isReady60Min === "true" || isReady60Min === true,
+          originalPrice: originalPrice != null && originalPrice !== "" ? parseFloat(originalPrice) : null,
+          images: JSON.stringify(imageUrls),
+          videos: videoUrls.length > 0 ? JSON.stringify(videoUrls) : null,
+          instagramEmbeds: validatedInstagramEmbeds.length > 0 ? JSON.stringify(validatedInstagramEmbeds) : null,
+          keywords: JSON.stringify(keywordsArray),
+          categories: {
+            create: categoryIdsArray.map((categoryId) => ({
+              categoryId: Number(categoryId),
+            })),
+          },
         },
-        sizes: {
-          create: sizesWithFloatPrices,
-        }
-      },
-      include: {
-        sizes: true,
-        categories: {
-          include: {
-            category: true
+        select: { id: true },
+      });
+
+      const colorByKey = new Map();
+      const colorByName = new Map();
+      for (const c of colorsToCreate) {
+        const createdColor = await tx.productColor.create({
+          data: {
+            productId: created.id,
+            name: c.name,
+            hexCode: c.hexCode,
+            photoUrl: c.photoUrl,
+            order: c.order,
+          },
+        });
+        colorByKey.set(c.key, createdColor.id);
+        colorByName.set(c.name.toLowerCase(), createdColor.id);
+      }
+
+      for (const v of variantsToCreate) {
+        let resolvedColorId = null;
+        if (colorByKey.size > 0 || colorByName.size > 0) {
+          if (v.colorKey && colorByKey.has(v.colorKey)) resolvedColorId = colorByKey.get(v.colorKey);
+          if (resolvedColorId == null && v.colorName && colorByName.has(v.colorName.toLowerCase())) {
+            resolvedColorId = colorByName.get(v.colorName.toLowerCase());
           }
         }
-      },
+        if (didVariantSpecifyColor(v) && resolvedColorId == null) {
+          throw new Error(`Variant color mapping failed for size "${v.sizeLabel}"`);
+        }
+
+        await tx.productVariant.create({
+          data: {
+            productId: created.id,
+            colorId: resolvedColorId,
+            sizeLabel: v.sizeLabel,
+            price: v.price,
+            originalPrice: v.originalPrice,
+            stock: v.stock,
+            sku: v.sku,
+          },
+        });
+      }
+
+      return tx.product.findUnique({
+        where: { id: created.id },
+        include: {
+          variants: { include: { color: true } },
+          colors: true,
+          categories: { include: { category: true } },
+        },
+      });
     });
 
+    if (!product) {
+      return res.status(500).json({ error: "Failed to create product" });
+    }
+
     res.json({
-      ...product,
+      ...normalizeProductResponse(product),
       images: imageUrls,
       videos: videoUrls,
       keywords: keywordsArray,
@@ -363,7 +577,24 @@ router.put("/:id", requireRole("admin"), uploadProductMedia, async (req, res) =>
     // Invalidate products cache on update
     invalidateCache("/products");
     
-    const { name, description, badge, isFestival, isNew, isTrending, isReady60Min, originalPrice, categoryIds, sizes, keywords, existingImages, existingVideos, instagramEmbeds } = req.body;
+    const {
+      name,
+      description,
+      badge,
+      isFestival,
+      isNew,
+      isTrending,
+      isReady60Min,
+      originalPrice,
+      categoryIds,
+      sizes,
+      variants,
+      colors,
+      keywords,
+      existingImages,
+      existingVideos,
+      instagramEmbeds,
+    } = req.body;
 
     const existingProduct = await prisma.product.findUnique({
       where: { id: Number(req.params.id) },
@@ -374,14 +605,15 @@ router.put("/:id", requireRole("admin"), uploadProductMedia, async (req, res) =>
     }
 
     // Handle images
-    let imageUrls = existingImages ? JSON.parse(existingImages) : [];
+    let imageUrls = parseJsonArray(existingImages);
     const imageFiles = req.files?.images || [];
     for (const file of imageFiles) {
       const url = await getImageUrl(file);
       imageUrls.push(url);
     }
+    const colorPhotoFiles = req.files?.colorPhotos || [];
     // Handle videos
-    let videoUrls = existingVideos ? JSON.parse(existingVideos) : [];
+    let videoUrls = parseJsonArray(existingVideos);
     const videoFiles = req.files?.videos || [];
     for (const file of videoFiles) {
       const url = await getVideoUrl(file);
@@ -389,75 +621,149 @@ router.put("/:id", requireRole("admin"), uploadProductMedia, async (req, res) =>
     }
 
     // Parse sizes, keywords, and Instagram embeds
-    const sizesArray = sizes ? JSON.parse(sizes) : [];
-    const keywordsArray = keywords ? JSON.parse(keywords) : [];
-    const instagramEmbedsArray = instagramEmbeds ? JSON.parse(instagramEmbeds) : [];
+    const sizesArray = parseJsonArray(sizes);
+    const variantsArrayRaw = parseJsonArray(variants);
+    const colorsArrayRaw = parseJsonArray(colors);
+    const keywordsArray = parseJsonArray(keywords);
+    const instagramEmbedsArray = parseJsonArray(instagramEmbeds);
     const validatedInstagramEmbeds = validateInstagramEmbeds(instagramEmbedsArray);
 
-    // Convert price strings to floats for sizes; support originalPrice (MRP) and stock
-    const sizesWithFloatPrices = sizesArray.map(size => ({
-      label: size.label,
-      price: parseFloat(size.price) || 0,
-      originalPrice: size.originalPrice != null && size.originalPrice !== "" ? parseFloat(size.originalPrice) : null,
-      stock: Math.max(0, parseInt(size.stock, 10) || 0),
-    }));
+    let colorsToCreate = normalizeColorInput(colorsArrayRaw);
+    colorsToCreate = await resolveColorPhotos(colorsToCreate, colorPhotoFiles);
+    colorsToCreate = colorsToCreate.filter((c) => c.name && c.photoUrl);
+    const hasExplicitVariants = variantsArrayRaw.length > 0;
+    const variantsToCreate = hasExplicitVariants
+      ? normalizeVariantInput(variantsArrayRaw, name || existingProduct.name)
+      : buildVariantsFromSizes(sizesArray, name || existingProduct.name);
 
-    if (!sizesWithFloatPrices.length) {
-      return res.status(400).json({ error: "At least one size is required" });
+    if (!variantsToCreate.length) {
+      return res.status(400).json({ error: "At least one variant is required" });
     }
-    await prisma.productSize.deleteMany({
-      where: { productId: Number(req.params.id) },
-    });
 
-    // Delete old category links
-    await prisma.productCategory.deleteMany({
-      where: { productId: Number(req.params.id) },
-    });
+    if (colorsToCreate.length > 0) {
+      imageUrls = [...new Set(colorsToCreate.map((c) => c.photoUrl).filter(Boolean))];
+    }
+    const skuSet = new Set();
+    for (const v of variantsToCreate) {
+      const skuKey = String(v.sku).toUpperCase();
+      if (skuSet.has(skuKey)) {
+        return res.status(400).json({ error: `Duplicate SKU in request: ${v.sku}` });
+      }
+      skuSet.add(skuKey);
+    }
 
-    // Parse category IDs
-    const categoryIdsArray = categoryIds ? JSON.parse(categoryIds) : [];
+    const categoryIdsArray = parseJsonArray(categoryIds);
+    const productId = Number(req.params.id);
 
-    const product = await prisma.product.update({
-      where: { id: Number(req.params.id) },
-      data: {
-        name,
-        description,
-        badge: badge || null,
-        isFestival: isFestival === "true" || isFestival === true,
-        isNew: isNew === "true" || isNew === true,
-        isTrending: isTrending === "true" || isTrending === true,
-        isReady60Min: isReady60Min === "true" || isReady60Min === true,
-        originalPrice: originalPrice != null && originalPrice !== "" ? parseFloat(originalPrice) : null,
-        images: JSON.stringify(imageUrls),
-        videos: videoUrls.length > 0 ? JSON.stringify(videoUrls) : null,
-        instagramEmbeds: validatedInstagramEmbeds.length > 0 ? JSON.stringify(validatedInstagramEmbeds) : null,
-        keywords: JSON.stringify(keywordsArray),
-        categories: {
-          create: categoryIdsArray.map(categoryId => ({
-            categoryId: Number(categoryId)
-          }))
+    const product = await prisma.$transaction(async (tx) => {
+      await tx.productVariant.deleteMany({ where: { productId } });
+      await tx.productCategory.deleteMany({ where: { productId } });
+
+      const updated = await tx.product.update({
+        where: { id: productId },
+        data: {
+          name,
+          description,
+          badge: badge || null,
+          isFestival: isFestival === "true" || isFestival === true,
+          isNew: isNew === "true" || isNew === true,
+          isTrending: isTrending === "true" || isTrending === true,
+          isReady60Min: isReady60Min === "true" || isReady60Min === true,
+          originalPrice: originalPrice != null && originalPrice !== "" ? parseFloat(originalPrice) : null,
+          images: JSON.stringify(imageUrls),
+          videos: videoUrls.length > 0 ? JSON.stringify(videoUrls) : null,
+          instagramEmbeds: validatedInstagramEmbeds.length > 0 ? JSON.stringify(validatedInstagramEmbeds) : null,
+          keywords: JSON.stringify(keywordsArray),
+          categories: {
+            create: categoryIdsArray.map((categoryId) => ({
+              categoryId: Number(categoryId),
+            })),
+          },
         },
-        sizes: {
-          create: sizesWithFloatPrices,
+        select: { id: true },
+      });
+
+      let existingColors = await tx.productColor.findMany({ where: { productId } });
+      if (colorsArrayRaw.length > 0) {
+        await tx.productColor.deleteMany({ where: { productId } });
+        existingColors = [];
+        for (const c of colorsToCreate) {
+          const createdColor = await tx.productColor.create({
+            data: {
+              productId,
+              name: c.name,
+              hexCode: c.hexCode,
+              photoUrl: c.photoUrl,
+              order: c.order,
+            },
+          });
+          existingColors.push(createdColor);
         }
-      },
-      include: {
-        sizes: true,
-        categories: {
-          include: {
-            category: true
-          }
+      }
+
+      const colorByKey = new Map();
+      const colorByName = new Map();
+      for (const c of colorsToCreate) {
+        const found = existingColors.find((ec) => ec.name.toLowerCase() === c.name.toLowerCase());
+        if (!found) continue;
+        colorByKey.set(c.key, found.id);
+        colorByName.set(c.name.toLowerCase(), found.id);
+      }
+      const colorById = new Map(existingColors.map((c) => [c.id, c.id]));
+      for (const c of existingColors) {
+        if (!colorByName.has(c.name.toLowerCase())) {
+          colorByName.set(c.name.toLowerCase(), c.id);
         }
-      },
+      }
+
+      for (const v of variantsToCreate) {
+        let resolvedColorId = null;
+        if (v.colorId != null && colorById.has(v.colorId)) {
+          resolvedColorId = v.colorId;
+        }
+        if (resolvedColorId == null && v.colorKey && colorByKey.has(v.colorKey)) {
+          resolvedColorId = colorByKey.get(v.colorKey);
+        }
+        if (resolvedColorId == null && v.colorName && colorByName.has(v.colorName.toLowerCase())) {
+          resolvedColorId = colorByName.get(v.colorName.toLowerCase());
+        }
+        if (didVariantSpecifyColor(v) && resolvedColorId == null) {
+          throw new Error(`Variant color mapping failed for size "${v.sizeLabel}"`);
+        }
+
+        await tx.productVariant.create({
+          data: {
+            productId: updated.id,
+            colorId: resolvedColorId,
+            sizeLabel: v.sizeLabel,
+            price: v.price,
+            originalPrice: v.originalPrice,
+            stock: v.stock,
+            sku: v.sku,
+          },
+        });
+      }
+
+      return tx.product.findUnique({
+        where: { id: updated.id },
+        include: {
+          variants: { include: { color: true } },
+          colors: true,
+          categories: { include: { category: true } },
+        },
+      });
     });
+
+    if (!product) {
+      return res.status(500).json({ error: "Failed to update product" });
+    }
 
     res.json({
-      ...product,
+      ...normalizeProductResponse(product),
       images: imageUrls,
       videos: videoUrls,
       instagramEmbeds: validatedInstagramEmbeds,
       keywords: keywordsArray,
-      categories: product.categories ? product.categories.map(pc => pc.category) : [],
     });
   } catch (error) {
     console.error("Update product error:", error);
