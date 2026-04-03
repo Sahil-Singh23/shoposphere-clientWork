@@ -2,12 +2,14 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { useCart } from "../context/CartContext";
 import { useUserAuth } from "../context/UserAuthContext";
+import { useWishlist } from "../context/WishlistContext";
 import Typed from "typed.js";
 import Fuse from "fuse.js";
 import { API } from "../api";
 
 export default function Navbar() {
   const { getCartCount } = useCart();
+  const { wishlistProductIds } = useWishlist();
   const { user, isAuthenticated, logout } = useUserAuth();
   const navigate = useNavigate();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -50,7 +52,7 @@ export default function Navbar() {
   useEffect(() => {
     const root = document.documentElement;
     root.classList.remove("dark");
-    localStorage.setItem("skfruits-theme", "light");
+    localStorage.setItem("shoposphere-theme", "light");
   }, []);
 
   const navItems = [
@@ -174,12 +176,11 @@ export default function Navbar() {
           <div className="flex items-center gap-3 lg:gap-3 min-w-0 flex-1">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-3 group shrink-0">
-              <div
-                className="w-12 h-12 md:w-13 md:h-13 rounded-full overflow-hidden flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-107"
-                style={{ backgroundColor: "var(--secondary)" }}
-              >
-                <img src="/logo.png" alt="SK Fruits" className="w-full h-full object-cover" />
-              </div>
+              <img
+                src="/logo.png"
+                alt="shoposphere"
+                className="h-10 md:h-11 w-auto shrink-0 object-contain transition-transform duration-300 group-hover:scale-105"
+              />
             </Link>
 
             {/* Desktop Menu */}
@@ -354,7 +355,7 @@ export default function Navbar() {
                               />
                             ) : (
                             <div className="w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--secondary)' }}>
-                              <img src="/logo.png" alt="SK Fruits" className="w-10 h-10 object-contain opacity-50" />
+                              <img src="/logo.png" alt="shoposphere" className="h-6 w-auto max-w-[2.25rem] object-contain opacity-50" />
                             </div>
                             )}
                             <div className="flex-1 min-w-0">
@@ -476,6 +477,33 @@ export default function Navbar() {
             </div>
 
             {/* Cart */}
+            <Link to="/profile/wishlist" className="relative group hidden md:inline-flex">
+              <button
+                className="p-2.5 rounded-full hover:scale-110 transition-all duration-300 active:scale-95"
+                style={{ backgroundColor: "var(--secondary)" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "var(--background)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "var(--secondary)";
+                }}
+              >
+                <svg className="w-6 h-6 transition-transform duration-300 group-hover:rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: "var(--foreground)" }}>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                  />
+                </svg>
+                {wishlistProductIds.length > 0 && (
+                  <span className="absolute top-0 right-0 min-w-[1.1rem] h-[1.1rem] px-1 text-[10px] rounded-full flex items-center justify-center font-semibold" style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}>
+                    {wishlistProductIds.length > 99 ? "99+" : wishlistProductIds.length}
+                  </span>
+                )}
+              </button>
+            </Link>
+
             <Link to="/cart" className="relative group">
               <button 
                 className="p-2.5 rounded-full hover:scale-110 transition-all duration-300 active:scale-95"
@@ -492,9 +520,6 @@ export default function Navbar() {
                   </span>
                 )}
               </button>
-              <span className="absolute -top-9 right-0 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0" style={{ backgroundColor: 'var(--foreground)', color: 'var(--background)' }}>
-                Your Cart
-              </span>
             </Link>
 
             {/* Mobile: Login/Signup in header when not authenticated */}
@@ -742,7 +767,7 @@ export default function Navbar() {
                             className="w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden"
                             style={{ backgroundColor: "var(--secondary)" }}
                           >
-                            <img src="/logo.png" alt="SK Fruits" className="w-10 h-10 object-contain opacity-50" />
+                            <img src="/logo.png" alt="shoposphere" className="h-6 w-auto max-w-[2.25rem] object-contain opacity-50" />
                           </div>
                         )}
                         <div className="flex-1 min-w-0">

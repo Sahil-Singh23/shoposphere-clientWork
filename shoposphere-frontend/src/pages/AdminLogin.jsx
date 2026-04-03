@@ -31,7 +31,7 @@ export default function AdminLogin() {
       <div className="rounded-2xl shadow-xl p-8 md:p-12 max-w-md w-full border" style={{ backgroundColor: "var(--card-white)", borderColor: "var(--border)" }}>
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <img src="/logo.png" alt="SK Fruits" className="h-14 w-auto" />
+            <img src="/logo.png" alt="shoposphere" className="h-14 w-auto" />
           </div>
           <h1 className="font-display text-xl font-bold text-design-foreground mb-2">
             Admin <span className="text-[var(--hover-accent)]">Login</span>

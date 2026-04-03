@@ -173,7 +173,7 @@ export default function CategoriesPage() {
                       className="w-full h-full object-cover rounded-sm"
                     />
                   ) : (
-                    <img src="/logo.png" alt="SK Fruits" className="w-3/4 h-3/4 object-contain" />
+                    <img src="/logo.png" alt="shoposphere" className="h-10 w-auto max-w-[70%] object-contain" />
                   )}
                 </div>
                 <h3 className="font-semibold text-sm text-center mt-2 text-design-foreground">
@@ -217,8 +217,8 @@ export default function CategoriesPage() {
               </div>
             ) : (
               <div className="text-center py-16">
-                <div className="inline-block p-6 rounded-full mb-4" style={{ backgroundColor: "var(--muted)" }}>
-                  <img src="/logo.png" alt="SK Fruits" className="w-16 h-16 object-contain" />
+                <div className="inline-block p-4 rounded-lg mb-4" style={{ backgroundColor: "var(--muted)" }}>
+                  <img src="/logo.png" alt="shoposphere" className="h-10 w-auto object-contain" />
                 </div>
                 <p className="font-medium" style={{ color: "var(--foreground-muted)" }}>
                   No products available in this category yet
@@ -246,8 +246,8 @@ export default function CategoriesPage() {
               </div>
             ) : (
               <div className="text-center py-16">
-                <div className="inline-block p-6 rounded-full mb-4" style={{ backgroundColor: "var(--muted)" }}>
-                  <img src="/logo.png" alt="SK Fruits" className="w-16 h-16 object-contain" />
+                <div className="inline-block p-4 rounded-lg mb-4" style={{ backgroundColor: "var(--muted)" }}>
+                  <img src="/logo.png" alt="shoposphere" className="h-10 w-auto object-contain" />
                 </div>
                 <p className="font-medium" style={{ color: "var(--foreground-muted)" }}>
                   No products available yet
@@ -260,8 +260,8 @@ export default function CategoriesPage() {
         {/* Show all categories if none selected */}
         {!selectedCategory && categories.length === 0 && (
           <div className="text-center py-16">
-            <div className="inline-block p-6 rounded-full mb-4" style={{ backgroundColor: "var(--muted)" }}>
-              <img src="/logo.png" alt="SK Fruits" className="w-16 h-16 object-contain" />
+            <div className="inline-block p-4 rounded-lg mb-4" style={{ backgroundColor: "var(--muted)" }}>
+              <img src="/logo.png" alt="shoposphere" className="h-10 w-auto object-contain" />
             </div>
             <p className="font-medium" style={{ color: "var(--foreground-muted)" }}>
               No categories available yet

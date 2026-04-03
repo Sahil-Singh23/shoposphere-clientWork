@@ -14,18 +14,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-producti
 const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "shoposphere_auth";
 
 function getCookieValue(req, name) {
-  const cookieHeader = req.headers.cookie;
-  if (!cookieHeader) return null;
-
-  const cookies = cookieHeader.split(";");
-  for (const cookie of cookies) {
-    const [rawKey, ...rawValueParts] = cookie.split("=");
-    if (rawKey?.trim() !== name) continue;
-    const value = rawValueParts.join("=").trim();
-    return value ? decodeURIComponent(value) : null;
-  }
-
-  return null;
+  return req.cookies?.[name] || null;
 }
 
 function getAuthToken(req) {

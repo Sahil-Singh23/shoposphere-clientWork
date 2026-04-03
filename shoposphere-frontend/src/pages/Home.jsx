@@ -270,7 +270,7 @@ export default function Home() {
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
-                                <img src="/logo.png" alt="" className="w-16 h-16 object-contain opacity-40" />
+                                <img src="/logo.png" alt="" className="h-10 w-auto object-contain opacity-40" />
                               </div>
                             )}
                           </div>
@@ -349,7 +349,7 @@ export default function Home() {
                         <img src={cat.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center p-4">
-                          <img src="/logo.png" alt="" className="w-14 h-14 object-contain opacity-50" />
+                          <img src="/logo.png" alt="" className="h-9 w-auto object-contain opacity-50" />
                         </div>
                       )}
                     </div>

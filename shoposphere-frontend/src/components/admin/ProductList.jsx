@@ -122,7 +122,7 @@ export default function ProductList({ products, onEdit, onDelete }) {
             />
           ) : (
             <div className="w-14 h-14 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'oklch(92% .04 340)' }}>
-              <img src="/logo.png" alt="Gift Choice Logo" className="w-10 h-10 object-contain opacity-50" />
+              <img src="/logo.png" alt="Gift Choice Logo" className="h-6 w-auto object-contain opacity-50" />
             </div>
           )}
         </div>
@@ -264,7 +264,7 @@ export default function ProductList({ products, onEdit, onDelete }) {
       title="All Products"
       emptyState={
         <>
-          <img src="/logo.png" alt="Gift Choice Logo" className="w-20 h-20 mx-auto mb-4 object-contain opacity-50" />
+          <img src="/logo.png" alt="Gift Choice Logo" className="h-12 w-auto mx-auto mb-4 object-contain opacity-50" />
           <p className="text-gray-600 font-medium">No products yet. Add your first product above!</p>
         </>
       }

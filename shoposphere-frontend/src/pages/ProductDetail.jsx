@@ -492,6 +492,11 @@ export default function ProductDetail() {
       return;
     }
     handleAddToCart();
+    if (!isAuthenticated) {
+      toast.info("Please sign up or log in to continue checkout.");
+      navigate("/signup");
+      return;
+    }
     navigate("/checkout");
   };
 
@@ -722,7 +727,7 @@ export default function ProductDetail() {
                           />
                         ) : (
                           <div className="absolute inset-0 flex items-center justify-center bg-[#eee]">
-                            <img src="/logo.png" alt="" className="w-24 h-24 object-contain opacity-40" />
+                            <img src="/logo.png" alt="" className="h-12 w-auto object-contain opacity-40" />
                           </div>
                         )}
 

@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { useRecentlyViewed } from "../context/RecentlyViewedContext";
+import { useUserAuth } from "../context/UserAuthContext";
 import ProductCarouselSection from "../components/ProductCarouselSection";
 
 export default function Cart() {
@@ -14,6 +15,7 @@ export default function Cart() {
     clearCart,
     getCartTotal,
   } = useCart();
+  const { isAuthenticated } = useUserAuth();
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -22,6 +24,13 @@ export default function Cart() {
       toast.error("Your cart is empty");
       return;
     }
+
+    if (!isAuthenticated) {
+      toast.info("Please sign up or log in to continue checkout.");
+      navigate("/signup");
+      return;
+    }
+
     navigate("/checkout");
   };
 
@@ -66,7 +75,7 @@ export default function Cart() {
       <div className="min-h-screen py-6 px-4 sm:px-6 lg:px-8" style={{ background: "var(--background)" }}>
         <div className="max-w-4xl mx-auto">
           <div className="rounded-2xl shadow-lg p-12 text-center" style={{ background: "var(--background)", border: "1px solid var(--border)" }}>
-            <img src="/logo.png" alt="SK Fruits" className="w-20 h-20 mx-auto mb-6 object-contain opacity-50" />
+            <img src="/logo.png" alt="shoposphere" className="h-12 w-auto mx-auto mb-6 object-contain opacity-50" />
             <h2 className="text-xl font-bold mb-4 font-display" style={{ color: "var(--foreground)" }}>
               Your cart is empty
             </h2>

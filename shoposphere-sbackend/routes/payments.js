@@ -93,7 +93,7 @@ router.post("/create-order", async (req, res) => {
     const order = await razorpay.orders.create({
       amount: amountInPaise,
       currency: CURRENCY,
-      receipt: `skfruits_${Date.now()}_${sessionId.slice(0, 8)}`,
+      receipt: `shoposphere_${Date.now()}_${sessionId.slice(0, 8)}`,
     });
     //if order was created , send order id amount currency to the frontend 
     res.json({

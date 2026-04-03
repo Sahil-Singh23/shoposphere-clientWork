@@ -140,8 +140,8 @@ function ProductCard({ product, compact = false }) {
 
     // Store last product context for the floating WhatsApp button.
     try {
-      localStorage.setItem("skfruits_last_whatsapp_product", product?.name || "");
-      localStorage.setItem("skfruits_last_whatsapp_price", priceText);
+      localStorage.setItem("shoposphere_last_whatsapp_product", product?.name || "");
+      localStorage.setItem("shoposphere_last_whatsapp_price", priceText);
     } catch {
       // ignore
     }
@@ -201,7 +201,7 @@ function ProductCard({ product, compact = false }) {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-transparent">
-                <img src="/logo.png" alt="SK Fruits" className="w-24 h-24 object-contain opacity-50" />
+                <img src="/logo.png" alt="shoposphere" className="h-12 w-auto object-contain opacity-50" />
               </div>
             )}
 

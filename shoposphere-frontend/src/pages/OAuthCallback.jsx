@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useUserAuth } from '../context/UserAuthContext';
 import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
 import { API } from '../api';
 
 export default function OAuthCallback() {
@@ -9,6 +10,7 @@ export default function OAuthCallback() {
   const navigate = useNavigate();
   const { loginWithToken } = useUserAuth();
   const { mergeCart } = useCart();
+  const { mergeWishlist } = useWishlist();
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -40,6 +42,7 @@ export default function OAuthCallback() {
           // Merge cart for regular customers
           if (user.role === 'customer') {
             await mergeCart();
+            await mergeWishlist();
           }
           
           // Redirect based on user role
@@ -60,7 +63,7 @@ export default function OAuthCallback() {
     };
 
     handleCallback();
-  }, [searchParams, navigate, loginWithToken, mergeCart]);
+  }, [searchParams, navigate, loginWithToken, mergeCart, mergeWishlist]);
 
   return (
     <div 

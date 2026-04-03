@@ -383,7 +383,7 @@ model Driver {
 // Two physical shop locations — system picks nearest one for delivery time calc
 model ShopLocation {
   id                    Int      @id @default(autoincrement())
-  name                  String                       // e.g. "SK Fruits - Malviya Nagar"
+  name                  String                       // e.g. "shoposphere - Malviya Nagar"
   latitude              Float
   longitude             Float
   isActive              Boolean  @default(true)
