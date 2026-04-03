@@ -64,19 +64,9 @@ export default function AdminOrderDetailPage() {
   const [assignDriverId, setAssignDriverId] = useState("");
   const [assigning, setAssigning] = useState(false);
 
-  const getHeaders = () => ({
-    Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
-    "Content-Type": "application/json",
-  });
-
   useEffect(() => {
     if (!id) return;
-    const token = localStorage.getItem("adminToken");
-    if (!token) {
-      navigate("/admin/login", { replace: true });
-      return;
-    }
-    fetch(`${API}/admin/orders/${id}`, { headers: getHeaders() })
+    fetch(`${API}/admin/orders/${id}`, { credentials: "include" })
       .then((res) => {
         if (res.status === 401) {
           logout();
@@ -95,9 +85,7 @@ export default function AdminOrderDetailPage() {
   }, [id, navigate, logout, toast]);
 
   useEffect(() => {
-    const token = localStorage.getItem("adminToken");
-    if (!token) return;
-    fetch(`${API}/admin/drivers`, { headers: getHeaders() })
+    fetch(`${API}/admin/drivers`, { credentials: "include" })
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => setDrivers(Array.isArray(data) ? data : []))
       .catch(() => setDrivers([]));
@@ -109,7 +97,8 @@ export default function AdminOrderDetailPage() {
     try {
       const res = await fetch(`${API}/admin/orders/update-status/${order.id}`, {
         method: "PUT",
-        headers: getHeaders(),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ orderStatus: newStatus }),
       });
       const data = await res.json();
@@ -146,7 +135,8 @@ export default function AdminOrderDetailPage() {
       const driverUserId = assignDriverId === "" || assignDriverId === "none" ? null : Number(assignDriverId);
       const res = await fetch(`${API}/admin/orders/${order.id}/assign-driver`, {
         method: "PUT",
-        headers: getHeaders(),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ driverUserId }),
       });
       const data = await res.json();

@@ -5,23 +5,16 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem("adminToken"));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (token) {
-      verifyToken();
-    } else {
-      setLoading(false);
-    }
+    verifyToken();
   }, []);
 
   const verifyToken = async () => {
     try {
       const res = await fetch(`${API}/auth/verify`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
       });
 
       if (res.ok) {
@@ -43,6 +36,7 @@ export function AuthProvider({ children }) {
       const res = await fetch(`${API}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 
@@ -50,9 +44,7 @@ export function AuthProvider({ children }) {
 
       if (res.ok) {
         if (data.user?.isAdmin) {
-          setToken(data.token);
           setUser(data.user);
-          localStorage.setItem("adminToken", data.token);
           return { success: true };
         }
         return { success: false, message: "This account is not an administrator. Use the storefront login for customers and drivers." };
@@ -64,13 +56,15 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    setToken(null);
     setUser(null);
-    localStorage.removeItem("adminToken");
+    fetch(`${API}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => {});
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

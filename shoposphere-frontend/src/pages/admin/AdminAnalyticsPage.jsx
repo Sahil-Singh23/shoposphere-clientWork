@@ -79,12 +79,8 @@ export default function AdminAnalyticsPage() {
   const [dateTo, setDateTo] = useState("");
   const filtersInitialized = useRef(false);
 
-  const getHeaders = () => ({
-    Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
-  });
-
   const fetchSummary = async () => {
-    const res = await fetch(`${API}/admin/analytics/summary`, { headers: getHeaders() });
+    const res = await fetch(`${API}/admin/analytics/summary`, { credentials: "include" });
     if (res.status === 401) {
       logout();
       navigate("/admin/login", { replace: true });
@@ -98,32 +94,27 @@ export default function AdminAnalyticsPage() {
     const params = new URLSearchParams({ period });
     if (dateFrom) params.set("from", dateFrom);
     if (dateTo) params.set("to", dateTo);
-    const res = await fetch(`${API}/admin/analytics/revenue-trend?${params}`, { headers: getHeaders() });
+    const res = await fetch(`${API}/admin/analytics/revenue-trend?${params}`, { credentials: "include" });
     if (res.status === 401) return [];
     if (!res.ok) throw new Error("Failed to load revenue trend");
     return res.json();
   };
 
   const fetchTopProducts = async () => {
-    const res = await fetch(`${API}/admin/analytics/top-products?limit=10`, { headers: getHeaders() });
+    const res = await fetch(`${API}/admin/analytics/top-products?limit=10`, { credentials: "include" });
     if (res.status === 401) return [];
     if (!res.ok) throw new Error("Failed to load top products");
     return res.json();
   };
 
   const fetchStatusDistribution = async () => {
-    const res = await fetch(`${API}/admin/analytics/order-status-distribution`, { headers: getHeaders() });
+    const res = await fetch(`${API}/admin/analytics/order-status-distribution`, { credentials: "include" });
     if (res.status === 401) return [];
     if (!res.ok) throw new Error("Failed to load status distribution");
     return res.json();
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("adminToken");
-    if (!token) {
-      navigate("/admin/login", { replace: true });
-      return;
-    }
     setError(null);
     setLoading(true);
     Promise.all([fetchSummary(), fetchRevenueTrend(), fetchTopProducts(), fetchStatusDistribution()])
@@ -145,8 +136,6 @@ export default function AdminAnalyticsPage() {
       filtersInitialized.current = true;
       return;
     }
-    const token = localStorage.getItem("adminToken");
-    if (!token) return;
     fetchRevenueTrend()
       .then((r) => setRevenueTrend(Array.isArray(r) ? r : []))
       .catch(() => {});

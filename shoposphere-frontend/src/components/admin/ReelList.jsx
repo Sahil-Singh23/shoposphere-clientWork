@@ -11,12 +11,9 @@ export default function ReelList({ reels, onEdit, onDelete }) {
     }
 
     try {
-      const token = localStorage.getItem("adminToken");
       const res = await fetch(`${API}/reels/${id}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
       });
 
       if (res.ok) {

@@ -2,12 +2,68 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import prisma from "../prisma.js";
-import { requireRole } from "../utils/auth.js";
 import passport  from 'passport';
 import GoogleStrategy  from 'passport-google-oidc';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
+const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "shoposphere_auth";
+const AUTH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+const isProduction = process.env.NODE_ENV === "production";
+const AUTH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+  path: "/",
+  maxAge: AUTH_COOKIE_MAX_AGE_MS,
+};
+
+function getCookieValue(req, name) {
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return null;
+
+  const cookies = cookieHeader.split(";");
+  for (const cookie of cookies) {
+    const [rawKey, ...rawValueParts] = cookie.split("=");
+    const key = rawKey?.trim();
+    if (key !== name) continue;
+    const value = rawValueParts.join("=").trim();
+    return value ? decodeURIComponent(value) : null;
+  }
+
+  return null;
+}
+
+function getAuthToken(req) {
+  return getCookieValue(req, AUTH_COOKIE_NAME) || null;
+}
+
+function setAuthCookie(res, token) {
+  res.cookie(AUTH_COOKIE_NAME, token, AUTH_COOKIE_OPTIONS);
+}
+
+function clearAuthCookie(res) {
+  res.clearCookie(AUTH_COOKIE_NAME, {
+    ...AUTH_COOKIE_OPTIONS,
+    maxAge: undefined,
+  });
+}
+
+async function getUserForAuthToken(token) {
+  const decoded = jwt.verify(token, JWT_SECRET);
+ 
+  const userId = Number(decoded.userId);
+  if (!userId) return null;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
+  });
+
+  if (!user) return null;
+  return { decoded, user };
+}
 
 // Configure Google OAuth strategy
 passport.use('google', new GoogleStrategy({
@@ -48,7 +104,7 @@ passport.use('google', new GoogleStrategy({
           name: name || email.split('@')[0],
           googleId,
           role: 'customer',
-          password: '' // No password for OAuth users
+          password: null // No password for OAuth users
         }
       });
     }
@@ -110,8 +166,9 @@ router.post("/signup", async (req, res) => {
       { expiresIn: "30d" }
     );
 
+    setAuthCookie(res, token);
+
     res.status(201).json({
-      token,
       user: { id: user.id, name: user.name, email: user.email, phone: user.phone ?? undefined },
     });
   } catch (error) {
@@ -143,16 +200,16 @@ router.post("/login", async (req, res) => {
       { expiresIn: "30d" }
     );
 
+    setAuthCookie(res, token);
+
     if (user.role === "admin") {
       return res.json({
-        token,
         user: { id: user.id, email: user.email, isAdmin: true, role: "admin" },
       });
     }
 
     if (user.role === "driver") {
       return res.json({
-        token,
         user: {
           id: user.id,
           name: user.name,
@@ -164,7 +221,6 @@ router.post("/login", async (req, res) => {
     }
 
     res.json({
-      token,
       user: {
         id: user.id,
         name: user.name,
@@ -179,21 +235,16 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// GET /auth/me — validate token and return user (role from DB; never trust token role for authorization)
+// GET /auth/me — validate auth cookie and return user (role from DB; never trust signed auth claims for access control)
 router.get("/me", async (req, res) => {
   try {
-    const token = req.headers.authorization?.replace(/^Bearer\s+/i, "").trim();
+    const token = getAuthToken(req);
     if (!token) return res.status(401).json({ error: "No token provided" });
 
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const userId = Number(decoded.userId);
-    if (!userId) return res.status(401).json({ error: "Invalid token" });
+    const authData = await getUserForAuthToken(token);
+    if (!authData) return res.status(401).json({ error: "Invalid token" });
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
-    });
-    if (!user) return res.status(401).json({ error: "User not found" });
+    const { user } = authData;
 
     if (user.role === "admin") {
       return res.json({ user: { id: user.id, email: user.email, isAdmin: true, role: "admin" } });
@@ -231,8 +282,28 @@ router.get("/me", async (req, res) => {
 });
 
 // GET /auth/verify — admin-only token verification (used by admin dashboard)
-router.get("/verify", requireRole("admin"), async (req, res) => {
-  res.json({ valid: true, user: { id: req.userId, email: req.userEmail } });
+router.get("/verify", async (req, res) => {
+  try {
+    const token = getAuthToken(req);
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
+    const authData = await getUserForAuthToken(token);
+    if (!authData) return res.status(401).json({ message: "Invalid or expired token" });
+
+    const { user } = authData;
+    if (user.role !== "admin") {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
+
+    res.json({ valid: true, user: { id: user.id, email: user.email } });
+  } catch (error) {
+    return res.status(401).json({ message: "Invalid or expired token" });
+  }
+});
+
+router.post("/logout", async (_req, res) => {
+  clearAuthCookie(res);
+  res.status(200).json({ success: true });
 });
 
 // Google OAuth routes
@@ -253,10 +324,11 @@ router.get('/login/federated/google/callback',
         JWT_SECRET,
         { expiresIn: "30d" }
       );
+
+      setAuthCookie(res, token);
       
-      // Redirect to frontend with only token (user data will be fetched from /auth/me)
       const frontendURL = process.env.FRONTEND_URL || 'http://localhost:5173';
-      res.redirect(`${frontendURL}/auth/callback?token=${token}`);
+      res.redirect(`${frontendURL}/auth/callback`);
     } catch (error) {
       console.error('OAuth callback error:', error);
       const frontendURL = process.env.FRONTEND_URL || 'http://localhost:5173';

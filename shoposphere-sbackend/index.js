@@ -60,7 +60,7 @@ app.use(
       "https://skfruits.onrender.com",
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Cart-Session-Id"],
+    allowedHeaders: ["Content-Type", "X-Cart-Session-Id"],
     credentials: true
   })
 );

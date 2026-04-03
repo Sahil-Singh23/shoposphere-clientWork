@@ -102,7 +102,6 @@ export default function BannerForm({ banner, onSave, onCancel }) {
     isSubmittingRef.current = true;
 
     try {
-      const token = localStorage.getItem("adminToken");
       const url = banner ? `${API}/banners/${banner.id}` : `${API}/banners`;
       const method = banner ? "PUT" : "POST";
 
@@ -125,9 +124,7 @@ export default function BannerForm({ banner, onSave, onCancel }) {
 
       const res = await fetch(url, {
         method,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
         body: formDataToSend,
       });
 

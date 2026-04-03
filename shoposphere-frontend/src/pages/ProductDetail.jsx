@@ -151,7 +151,7 @@ export default function ProductDetail() {
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist, togglingId } = useWishlist();
   const { recentIds, addViewed } = useRecentlyViewed();
-  const { isAuthenticated, getAuthHeaders } = useUserAuth();
+  const { isAuthenticated } = useUserAuth();
   const toast = useToast();
 
   const [product, setProduct] = useState(null);
@@ -368,10 +368,8 @@ export default function ProductDetail() {
       return;
     }
     const ac = new AbortController();
-    const headers = getAuthHeaders();
-    if (!headers.Authorization) return;
     setEligibilityLoading(true);
-    fetch(`${API}/reviews/eligibility/${id}`, { headers, credentials: "include", signal: ac.signal })
+    fetch(`${API}/reviews/eligibility/${id}`, { credentials: "include", signal: ac.signal })
       .then((res) => res.json())
       .then((data) => {
         setEligibility({
@@ -386,7 +384,7 @@ export default function ProductDetail() {
       })
       .finally(() => setEligibilityLoading(false));
     return () => ac.abort();
-  }, [id, isAuthenticated, getAuthHeaders]);
+  }, [id, isAuthenticated]);
 
   const handleSubmitReview = async () => {
     if (!product?.id || reviewRating < 1 || reviewRating > 5) {
@@ -394,11 +392,10 @@ export default function ProductDetail() {
       return;
     }
     setSubmitReviewLoading(true);
-    const headers = { ...getAuthHeaders(), "Content-Type": "application/json" };
     try {
       const res = await fetch(`${API}/reviews/add`, {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           productId: product.id,

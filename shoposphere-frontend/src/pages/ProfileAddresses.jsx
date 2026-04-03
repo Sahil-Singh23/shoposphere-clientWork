@@ -6,7 +6,7 @@ import { API } from "../api";
 import AddressForm from "../components/AddressForm";
 
 export default function ProfileAddresses() {
-  const { isAuthenticated, loading: authLoading, getAuthHeaders } = useUserAuth();
+  const { isAuthenticated, loading: authLoading } = useUserAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const [addresses, setAddresses] = useState([]);
@@ -17,10 +17,8 @@ export default function ProfileAddresses() {
   const [deletingId, setDeletingId] = useState(null);
 
   const fetchAddresses = async () => {
-    const headers = getAuthHeaders();
-    if (!headers.Authorization) return;
     try {
-      const res = await fetch(`${API}/addresses`, { headers });
+      const res = await fetch(`${API}/addresses`, { credentials: "include" });
       if (res.status === 401) {
         navigate("/login", { replace: true });
         return;
@@ -54,12 +52,12 @@ export default function ProfileAddresses() {
 
   const handleSave = async (payload) => {
     setSaving(true);
-    const headers = { "Content-Type": "application/json", ...getAuthHeaders() };
     try {
       if (editing) {
         const res = await fetch(`${API}/addresses/update/${editing.id}`, {
           method: "PUT",
-          headers,
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify(payload),
         });
         const data = await res.json();
@@ -71,7 +69,8 @@ export default function ProfileAddresses() {
       } else {
         const res = await fetch(`${API}/addresses/add`, {
           method: "POST",
-          headers,
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify(payload),
         });
         const data = await res.json();
@@ -97,7 +96,7 @@ export default function ProfileAddresses() {
     try {
       const res = await fetch(`${API}/addresses/delete/${id}`, {
         method: "DELETE",
-        headers: getAuthHeaders(),
+        credentials: "include",
       });
       if (!res.ok) {
         const data = await res.json();
@@ -117,7 +116,7 @@ export default function ProfileAddresses() {
     try {
       const res = await fetch(`${API}/addresses/set-default/${id}`, {
         method: "PUT",
-        headers: getAuthHeaders(),
+        credentials: "include",
       });
       if (!res.ok) {
         const data = await res.json();

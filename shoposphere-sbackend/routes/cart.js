@@ -1,26 +1,13 @@
 import express from "express";
-import jwt from "jsonwebtoken";
 import prisma from "../prisma.js";
 import { randomUUID } from "crypto";
+import { optionalCustomerAuth } from "../utils/auth.js";
 
 const router = express.Router();
 const CART_SESSION_HEADER = "x-cart-session-id";
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
 
 function getSessionId(req) {
   return req.headers[CART_SESSION_HEADER]?.trim() || req.body?.sessionId?.trim() || null;
-}
-
-/** Optional: set req.customerUserId when Bearer token is a customer (not admin). */
-function optionalCustomerAuth(req, res, next) {
-  const token = req.headers.authorization?.replace(/^Bearer\s+/i, "").trim();
-  if (!token) return next();
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    if (decoded.role === "admin") return next();
-    req.customerUserId = Number(decoded.userId);
-  } catch (_) {}
-  next();
 }
 
 function getIncomingVariantId(payload = {}) {

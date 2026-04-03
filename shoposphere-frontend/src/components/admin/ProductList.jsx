@@ -65,12 +65,9 @@ export default function ProductList({ products, onEdit, onDelete }) {
     if (!confirm("Are you sure you want to delete this product?")) return;
 
     try {
-      const token = localStorage.getItem("adminToken");
       const res = await fetch(`${API}/products/${productId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
       });
 
       if (res.ok) {

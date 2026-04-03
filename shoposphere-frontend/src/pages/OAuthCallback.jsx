@@ -13,7 +13,6 @@ export default function OAuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        const token = searchParams.get('token');
         const error = searchParams.get('message');
 
         if (error) {
@@ -22,15 +21,8 @@ export default function OAuthCallback() {
           return;
         }
 
-        if (!token) {
-          console.error('No token received');
-          navigate('/', { replace: true });
-          return;
-        }
-
-        // Fetch user data using the token (more reliable than URL params)
         const response = await fetch(`${API}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
         });
 
         if (!response.ok) {
@@ -42,8 +34,7 @@ export default function OAuthCallback() {
         const data = await response.json();
         const user = data.user;
 
-        // Set the token and user in auth context
-        const success = await loginWithToken(token, user);
+        const success = await loginWithToken(null, user);
         
         if (success) {
           // Merge cart for regular customers
