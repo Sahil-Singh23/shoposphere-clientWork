@@ -1,123 +1,133 @@
 @import "tailwindcss";
 
 /* =============================================================================
-   SK Fruits — Premium Grocery Design System
-  Fresh & natural · Minimal but rich · Apple-level cleanliness · Soft UI depth
+   Shoposphere — Achroma Collective / Editorial Canvas
+   Monochrome surfaces, tonal depth, Epilogue + Manrope, glass & pill CTAs.
+   Legacy variable names preserved so existing components keep working.
    ============================================================================= */
 
-/* Typography: DM Sans (clean sans-serif) — light body, medium headings, generous letter-spacing */
-
 :root {
-  /* ---- Color palette ---- */
-  /* Highlight Yellow — CTA buttons */
-  --cta-yellow: #FFD580;
-  --cta-yellow-hover: #F4BF5A;
-  --cta-yellow-foreground: #1a1a1a;
+  /* Achroma reference (optional use in new code) */
+  --achroma-surface: #f9f9fb;
+  --achroma-surface-low: #f3f3f5;
+  --achroma-on-surface: #1a1c1d;
+  --achroma-primary-container: #3b3b3b;
 
-  /* Fresh green — accent (eco / fresh) */
-  --green-bg-subtle: #f0f7f0;
-  --green-bg-soft: #e8f5e9;
-  --green-accent: #4CAF50;
-  --green-muted: #A6DFA8;
+  /* CTA — editorial black (keeps --cta-yellow* names for inline styles) */
+  --cta-yellow: #000000;
+  --cta-yellow-hover: #3b3b3b;
+  --cta-yellow-foreground: #f8f8f8;
 
-  /* Warm peach/orange — gift section & wood warmth */
-  --peach-bg: #FFF2E3;
-  --peach-accent: #FFD580;
-  --peach-soft: #FFE2AE;
+  /* Success / fresh — muted green for badges & stock */
+  --green-bg-subtle: #eef2ef;
+  --green-bg-soft: #e4ebe6;
+  --green-accent: #2d6a3e;
+  --green-muted: #8aa892;
 
-  /* Neutrals — cards, separators */
+  /* Section tints — neutral tonal (peach keys kept for .bg-gift / gradients) */
+  --peach-bg: #f3f3f5;
+  --peach-accent: #e2e2e4;
+  --peach-soft: #e8e8ea;
+
   --card-white: #ffffff;
-  --separator: #E3CDB6;
-  --separator-subtle: rgba(0, 0, 0, 0);
-  --background: #F5E6D3;
-  --foreground: #2d2d2d;
-  --foreground-muted: #6B3E26;
-  /* Use --foreground-muted (or .text-muted) for secondary text. Do NOT use --muted for text (it's for backgrounds only). */
+  --separator: rgba(26, 28, 29, 0.08);
+  --separator-subtle: rgba(26, 28, 29, 0.04);
+  --background: #f9f9fb;
+  --foreground: #1a1c1d;
+  --foreground-muted: #474747;
   --text-muted: var(--foreground-muted);
 
-  /* Semantic (map to design tokens) */
-  --primary: #6B3E26;
-  --primary-foreground: #ffffff;
-  --secondary: #F5E6D3;
-  --muted: var(--separator);
+  --primary: #000000;
+  --primary-foreground: #f8f8f8;
+  --secondary: #f3f3f5;
+  --muted: #f3f3f5;
   --accent: var(--green-accent);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: var(--separator);
-  --input: var(--separator);
+  --destructive: #7e0004;
+  --border: rgba(26, 28, 29, 0.06);
+  --input: #e2e2e4;
 
-  /* Page/section backgrounds (neutral — no green) */
   --page-products-bg: var(--background);
-  --page-auth-bg: linear-gradient(135deg, var(--peach-bg) 0%, var(--background) 100%);
-  --btn-primary-bg: var(--cta-yellow);
-  --btn-primary-fg: var(--cta-yellow-foreground);
-  --hover-accent: var(--cta-yellow-hover);
-  --hover-accent-muted: var(--cta-yellow-hover);
-  --success: var(--green-accent);
+  --page-auth-bg: linear-gradient(160deg, #f9f9fb 0%, #f3f3f5 45%, #ffffff 100%);
+  --btn-primary-bg: linear-gradient(135deg, #000000 0%, #3b3b3b 100%);
+  --btn-primary-fg: #f8f8f8;
+  --hover-accent: #4a4a4a;
+  --hover-accent-muted: #e8e8ea;
+  --success: #1b5e20;
 
-  /* Motion system (smooth + consistent) */
   --motion-fast: 160ms;
   --motion-medium: 260ms;
   --motion-slow: 420ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* Chart colors */
   --chart-1: var(--green-accent);
-  --chart-2: var(--peach-accent);
-  --chart-3: var(--cta-yellow);
-  --chart-4: oklch(0.55 0.15 250);
+  --chart-2: #7a7a80;
+  --chart-3: #3b3b3b;
+  --chart-4: oklch(0.55 0.08 250);
   --chart-5: var(--green-muted);
 
-  /* Subtle gradients (utility) */
   --gradient-fresh: linear-gradient(180deg, var(--green-bg-soft) 0%, transparent 100%);
   --gradient-warm: linear-gradient(180deg, var(--peach-bg) 0%, transparent 100%);
 
-  /* Rounded components — premium, soft */
   --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
-  --radius-xl: 22px;
-  --radius-2xl: 28px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
 
-  /* Soft UI depth — minimal shadows */
-  --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.06);
-  --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-soft: 0 40px 40px -15px rgba(26, 28, 29, 0.04);
+  --shadow-medium: 0 24px 48px -12px rgba(26, 28, 29, 0.08);
+  --shadow-lg: 0 32px 64px -16px rgba(26, 28, 29, 0.1);
+  --shadow-card: 0 1px 0 rgba(26, 28, 29, 0.04), 0 24px 40px -20px rgba(26, 28, 29, 0.06);
 
-  /* Payment gateway theme (hex for Razorpay) */
-  --payment-accent: #0d9488;
+  --payment-accent: #1a1c1d;
 
-  /* Legacy compatibility */
   --primary-old: var(--background);
   --secondary-old: var(--secondary);
-  --secondary-dark: #D2A87E;
-  --secondary-light: var(--muted);
+  --secondary-dark: #c8c8ce;
+  --secondary-light: #ffffff;
+
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-strong: rgba(255, 255, 255, 0.9);
+  --shadow-bar: 0 -24px 48px -12px rgba(26, 28, 29, 0.08);
 }
 
 .dark {
-  /* Dark premium wood */
-  --background: #1B120C;
-  --foreground: #F5E6D3;
-  --foreground-muted: #D2A87E;
+  --background: #121214;
+  --foreground: #f3f3f5;
+  --foreground-muted: #a8a8ae;
   --text-muted: var(--foreground-muted);
-  --card-white: #2A1B12;
-  --separator: #3B2A1F;
-  --separator-subtle: rgba(213, 168, 126, 0.18);
-  --primary: #8A5A3A;
-  --secondary: #2A1B12;
-  --secondary-dark: #D2A87E;
-  --muted: rgba(245, 230, 211, 0.10);
-  --accent: #4CAF50;
-  --border: #3B2A1F;
-  --input: #2A1B12;
+  --card-white: #1e1e22;
+  --separator: rgba(255, 255, 255, 0.1);
+  --separator-subtle: rgba(255, 255, 255, 0.05);
+  --primary: #f8f8f8;
+  --primary-foreground: #121214;
+  --secondary: #2a2a2e;
+  --secondary-dark: #3a3a42;
+  --muted: rgba(255, 255, 255, 0.08);
+  --accent: #4caf50;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: #2a2a2e;
+  --cta-yellow: #f8f8f8;
+  --cta-yellow-hover: #e2e2e4;
+  --cta-yellow-foreground: #121214;
   --page-products-bg: var(--background);
-  --page-auth-bg: linear-gradient(135deg, #2B1A12 0%, var(--background) 100%);
-  --btn-primary-bg: var(--cta-yellow);
-  --btn-primary-fg: var(--cta-yellow-foreground);
-  --hover-accent: var(--cta-yellow-hover);
-  --peach-bg: rgba(255, 213, 128, 0.14);
+  --page-auth-bg: linear-gradient(160deg, #121214 0%, #1e1e22 50%, #2a2a2e 100%);
+  --btn-primary-bg: linear-gradient(135deg, #f8f8f8 0%, #c8c8ce 100%);
+  --btn-primary-fg: #121214;
+  --hover-accent: #ffffff;
+  --hover-accent-muted: #3a3a42;
+  --peach-bg: rgba(255, 255, 255, 0.06);
+  --peach-accent: rgba(255, 255, 255, 0.1);
   --green-bg-subtle: rgba(76, 175, 80, 0.12);
+  --green-bg-soft: rgba(76, 175, 80, 0.08);
+  --glass-bg: rgba(18, 18, 20, 0.78);
+  --glass-bg-strong: rgba(18, 18, 20, 0.92);
+  --secondary-light: #2a2a2e;
+  --shadow-soft: 0 40px 40px -15px rgba(0, 0, 0, 0.35);
+  --shadow-medium: 0 24px 48px -12px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.06), 0 24px 40px -20px rgba(0, 0, 0, 0.45);
+  --shadow-bar: 0 -24px 48px -12px rgba(0, 0, 0, 0.4);
 }
 
 * {
@@ -125,9 +135,9 @@
 }
 
 body {
-  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  font-weight: 300;
-  letter-spacing: 0.02em;
+  font-family: Manrope, "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -138,12 +148,12 @@ body {
   line-height: 1.55;
 }
 
-/* Headings — medium weight, clean sans-serif, high readability */
+/* Headings — Epilogue, editorial weight & tracking */
 .font-display,
 h1, h2, h3, h4, h5, h6 {
-  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  font-weight: 500;
-  letter-spacing: 0.03em;
+  font-family: Epilogue, Manrope, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--foreground);
 }
 
@@ -369,27 +379,53 @@ a, button, input, textarea, select {
 .border-design { border-color: var(--border); }
 .border-separator { border-color: var(--separator); }
 
-/* CTA — Primary Yellow, smooth hover */
+/* CTA — editorial gradient pill */
 .btn-primary-brand {
-  background-color: var(--btn-primary-bg);
+  background: var(--btn-primary-bg);
   color: var(--btn-primary-fg);
-  border-radius: var(--radius-md);
-}
-.btn-primary-brand:hover {
-  background-color: var(--hover-accent);
-  color: var(--btn-primary-fg);
+  border-radius: 9999px;
+  border: none;
   box-shadow: var(--shadow-soft);
 }
+.btn-primary-brand:hover {
+  filter: brightness(1.08);
+  color: var(--btn-primary-fg);
+  box-shadow: var(--shadow-medium);
+}
 
-/* Card style — white, rounded, soft depth; smooth hover */
+/* Card — tonal layering, no harsh hairlines */
 .card-soft {
   background-color: var(--card-white);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-card);
   border: 1px solid var(--separator-subtle);
 }
 .card-soft:hover {
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-medium);
+}
+
+/* Glass surfaces (nav, admin, mobile bar) */
+.achroma-glass-bar {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-color: var(--separator) !important;
+}
+
+.achroma-admin-shell > aside {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.achroma-admin-topbar {
+  background: var(--glass-bg-strong) !important;
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+}
+
+.dark .achroma-admin-shell > aside {
+  background: var(--glass-bg-strong);
 }
 
 /* Hero floating edge fruits */
@@ -439,4 +475,41 @@ a, button, input, textarea, select {
 
 .add-success-pop {
   animation: addSuccessPop 520ms var(--ease-out) both;
+}
+
+/* Product detail — editorial layout (Epilogue + Manrope) */
+.pd-editorial {
+  font-family: Manrope, "DM Sans", system-ui, sans-serif;
+}
+.pd-editorial .pd-headline {
+  font-family: Epilogue, Manrope, system-ui, sans-serif;
+}
+.editorial-pdp-shadow {
+  box-shadow: 0 40px 40px -15px rgba(0, 0, 0, 0.04);
+}
+.hide-scrollbar-pdp::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar-pdp {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Home landing — Manrope + Epilogue headlines (aligned with Achroma surface) */
+.home-landing {
+  font-family: Manrope, Inter, "DM Sans", system-ui, sans-serif;
+  background-color: var(--achroma-surface);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+}
+.home-landing .home-headline {
+  font-family: Epilogue, Manrope, system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+.hide-scrollbar-home::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar-home {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

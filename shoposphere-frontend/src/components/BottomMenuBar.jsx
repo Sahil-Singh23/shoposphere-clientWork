@@ -73,11 +73,9 @@ export default function BottomMenuBar() {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t backdrop-blur-md"
+      className="achroma-glass-bar md:hidden fixed bottom-0 left-0 right-0 z-40 border-t"
       style={{
-        borderColor: "rgba(0, 0, 0, 0.06)",
-        background: "rgba(255, 255, 255, 0.78)",
-        boxShadow: "0 -10px 34px rgba(0,0,0,0.14)",
+        boxShadow: "var(--shadow-bar)",
       }}
       aria-label="Bottom menu"
     >
@@ -92,7 +90,7 @@ export default function BottomMenuBar() {
               key={item.key}
               to={to}
               className="relative flex flex-col items-center justify-center gap-1 rounded-xl transition-all"
-              style={{ color: active ? "rgba(0,0,0,0.86)" : "rgba(0,0,0,0.48)" }}
+              style={{ color: active ? "var(--foreground)" : "var(--foreground-muted)" }}
               aria-current={active ? "page" : undefined}
             >
               <div
@@ -101,9 +99,9 @@ export default function BottomMenuBar() {
                   height: isCenter ? 44 : 36,
                   width: isCenter ? 44 : 36,
                   borderRadius: 999,
-                  backgroundColor: isCenter ? "rgba(0,0,0,0.86)" : "transparent",
-                  color: isCenter ? "white" : undefined,
-                  boxShadow: isCenter ? "0 18px 34px rgba(0,0,0,0.22)" : "none",
+                  background: isCenter ? "var(--btn-primary-bg)" : "transparent",
+                  color: isCenter ? "var(--btn-primary-fg)" : undefined,
+                  boxShadow: isCenter ? "var(--shadow-medium)" : "none",
                   transform: isCenter ? "translateY(-10px)" : "none",
                 }}
               >

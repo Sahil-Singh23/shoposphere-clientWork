@@ -31,11 +31,11 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: "var(--background)" }}>
+    <div className="min-h-screen flex achroma-admin-shell" style={{ backgroundColor: "var(--background)" }}>
       {/* Sidebar (desktop) */}
       <aside
         className="hidden lg:flex lg:flex-col w-72 border-r"
-        style={{ backgroundColor: "var(--background)", borderColor: "var(--border)" }}
+        style={{ borderColor: "var(--border)" }}
       >
         <div className="px-6 py-5 border-b" style={{ borderColor: "var(--border)" }}>
           <div className="flex items-center gap-3">
@@ -117,7 +117,7 @@ export default function AdminLayout() {
       <main className="flex-1 min-w-0 flex flex-col">
         {/* Top bar */}
         <div
-          className="sticky top-0 z-40 bg-[var(--background)]/95 backdrop-blur-sm border-b"
+          className="achroma-admin-topbar sticky top-0 z-40 border-b"
           style={{ borderColor: "var(--border)" }}
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

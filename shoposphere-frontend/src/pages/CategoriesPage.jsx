@@ -164,13 +164,13 @@ export default function CategoriesPage() {
                 className="flex-shrink-0 flex flex-col items-center min-w-[100px] sm:min-w-[120px] group"
               >
                 <div
-                  className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-full overflow-hidden flex items-center justify-center border-2 border-design group-hover:shadow-lg group-hover:scale-110 transition-all duration-300 bg-design-secondary"
+                  className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-sm overflow-hidden flex items-center justify-center border-2 border-design group-hover:shadow-lg group-hover:scale-110 transition-all duration-300 bg-design-secondary"
                 >
                   {category.imageUrl ? (
                     <img
                       src={category.imageUrl}
                       alt={category.name}
-                      className="w-full h-full object-cover rounded-full"
+                      className="w-full h-full object-cover rounded-sm"
                     />
                   ) : (
                     <img src="/logo.png" alt="SK Fruits" className="w-3/4 h-3/4 object-contain" />

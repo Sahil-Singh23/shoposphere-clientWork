@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { API } from "../api";
 import { useCart } from "../context/CartContext";
@@ -11,6 +11,139 @@ import { initializeInstagramEmbeds } from "../utils/instagramEmbed";
 import { useUserAuth } from "../context/UserAuthContext";
 import { useRecentlyViewed } from "../context/RecentlyViewedContext";
 import ProductCarouselSection from "../components/ProductCarouselSection";
+import {
+  deriveSizeOptionsFromVariants,
+  discountPercent,
+  findWeightOption,
+  firstProductImageUrl,
+  formatInr,
+  getMinPriceForProduct,
+  getPrimaryCategory,
+  normalizeImageList,
+  parseInstagramEmbedsList,
+  parseWeightOptions,
+  parseWeightOptionsSafe,
+  pickPreferredSize,
+  resolveDisplayedPricing,
+} from "../utils/productDetailHelpers";
+
+const INSTAGRAM_GLYPH_PATH =
+  "M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z";
+
+function InstagramGlyph({ className = "w-10 h-10" }) {
+  return (
+    <svg className={`${className} text-white`} fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+      <path d={INSTAGRAM_GLYPH_PATH} />
+    </svg>
+  );
+}
+
+function MediaThumbPreview({ item, productName, index, iconSizeClass }) {
+  return (
+    <div className="w-full h-full bg-[#f3f3f5]">
+      {item.type === "instagram" ? (
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500">
+          <InstagramGlyph className={iconSizeClass} />
+        </div>
+      ) : item.type === "video" ? (
+        <video src={item.url} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+      ) : (
+        <img
+          src={item.url}
+          alt={`${productName} ${index + 1}`}
+          className="w-full h-full object-cover"
+          loading="lazy"
+          decoding="async"
+          width={96}
+          height={96}
+        />
+      )}
+    </div>
+  );
+}
+
+function ProductMediaThumbnails({
+  media,
+  maxItems,
+  activeIndex,
+  onPick,
+  productName,
+  layout,
+}) {
+  const items = media.slice(0, maxItems);
+  if (items.length === 0) return null;
+
+  const wrapperClass =
+    layout === "sidebar"
+      ? "order-2 md:order-1 flex md:flex-col gap-3 md:gap-4 overflow-x-auto md:overflow-y-auto md:max-h-[min(85vh,920px)] hide-scrollbar-pdp shrink-0 pb-1 md:pb-0"
+      : "mt-4 flex gap-3 overflow-x-auto pb-2 lg:hidden hide-scrollbar-pdp";
+
+  const buttonClass =
+    layout === "sidebar"
+      ? "relative w-20 h-24 md:w-24 md:h-32 shrink-0 rounded-xl overflow-hidden transition-all duration-200"
+      : "shrink-0 w-20 h-24 rounded-xl overflow-hidden transition-all duration-200";
+
+  const activeRing =
+    layout === "sidebar"
+      ? "ring-2 ring-offset-2 ring-black border-2 border-black"
+      : "ring-2 ring-offset-2 ring-black border-2 border-black";
+
+  const idleRing =
+    layout === "sidebar"
+      ? "border border-black/10 hover:opacity-80"
+      : "border border-black/10 active:scale-95";
+
+  return (
+    <div className={wrapperClass} style={layout === "strip" ? { WebkitOverflowScrolling: "touch" } : undefined}>
+      {items.map((item, idx) => {
+        const active = idx === activeIndex;
+        return (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => onPick(idx)}
+            onMouseEnter={layout === "sidebar" ? () => onPick(idx) : undefined}
+            className={`${buttonClass} ${active ? activeRing : idleRing}`}
+          >
+            <MediaThumbPreview
+              item={item}
+              productName={productName}
+              index={idx}
+              iconSizeClass={layout === "sidebar" ? "w-10 h-10" : "w-8 h-8"}
+            />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ProductBadges({ product }) {
+  return (
+    <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+      {product.isReady60Min ? (
+        <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-white/95 text-black shadow-sm border border-black/5">
+          60 Min
+        </span>
+      ) : null}
+      {product.isFestival ? (
+        <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-white/95 text-black shadow-sm border border-black/5">
+          Festival
+        </span>
+      ) : null}
+      {product.isNew ? (
+        <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-black text-white shadow-sm">
+          New
+        </span>
+      ) : null}
+      {product.badge ? (
+        <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full bg-black text-white shadow-sm">
+          {product.badge}
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -20,14 +153,14 @@ export default function ProductDetail() {
   const { recentIds, addViewed } = useRecentlyViewed();
   const { isAuthenticated, getAuthHeaders } = useUserAuth();
   const toast = useToast();
+
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState(null);
   const [selectedColorId, setSelectedColorId] = useState(null);
   const [selectedWeight, setSelectedWeight] = useState(null);
   const [quantity, setQuantity] = useState(1);
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [expanded, setExpanded] = useState(() => new Set(["details"]));
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [similarProducts, setSimilarProducts] = useState([]);
   const [recommendedProducts, setRecommendedProducts] = useState([]);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
@@ -38,48 +171,11 @@ export default function ProductDetail() {
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
   const [submitReviewLoading, setSubmitReviewLoading] = useState(false);
+
   const isWishlisted = product ? isInWishlist(product.id) : false;
   const isWishlistToggling = product && togglingId === product.id;
 
-  const deriveSizeOptionsFromVariants = (variants = []) => {
-    const byLabel = new Map();
-    for (const variant of variants) {
-      const label = String(variant?.sizeLabel || "").trim();
-      if (!label) continue;
-
-      const next = {
-        id: variant.id,
-        label,
-        price: Number(variant.price || 0),
-        originalPrice:
-          variant.originalPrice != null && variant.originalPrice !== ""
-            ? Number(variant.originalPrice)
-            : null,
-        stock: Math.max(0, Number(variant.stock || 0)),
-      };
-
-      if (!byLabel.has(label)) {
-        byLabel.set(label, next);
-        continue;
-      }
-
-      const current = byLabel.get(label);
-      current.stock += next.stock;
-      if (next.price < current.price) {
-        current.id = next.id;
-        current.price = next.price;
-        current.originalPrice = next.originalPrice;
-      }
-    }
-
-    return [...byLabel.values()];
-  };
-
-  const pickPreferredSize = (sizes = []) => {
-    if (!Array.isArray(sizes) || sizes.length === 0) return null;
-    const inStock = sizes.find((s) => Math.max(0, Number(s?.stock ?? 0)) > 0);
-    return inStock || sizes[0] || null;
-  };
+  const primaryCategory = useMemo(() => getPrimaryCategory(product), [product]);
 
   const colorOptions = useMemo(() => {
     if (!Array.isArray(product?.colors)) return [];
@@ -93,24 +189,13 @@ export default function ProductDetail() {
 
   const sizeOptions = useMemo(() => {
     if (Array.isArray(product?.variants) && product.variants.length > 0) {
-      const filteredVariants = selectedColorId
-        ? product.variants.filter((v) => v.colorId === selectedColorId)
-        : product.variants;
-      return deriveSizeOptionsFromVariants(filteredVariants);
+      const pool = selectedColorId ? product.variants.filter((v) => v.colorId === selectedColorId) : product.variants;
+      return deriveSizeOptionsFromVariants(pool);
     }
     return Array.isArray(product?.sizes) ? product.sizes : [];
   }, [product?.variants, product?.sizes, selectedColorId]);
-  
-  const images = useMemo(() => {
-    if (!product?.images) return [];
-    if (Array.isArray(product.images)) return product.images;
-    try {
-      const parsed = JSON.parse(product.images);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }, [product?.images]);
+
+  const images = useMemo(() => normalizeImageList(product?.images), [product?.images]);
 
   const selectedColorImages = useMemo(() => {
     const colorPhotoUrls = Array.isArray(selectedColor?.photoUrls)
@@ -137,18 +222,11 @@ export default function ProductDetail() {
     return product.videos;
   }, [product?.videos]);
 
-  const instagramEmbeds = useMemo(() => {
-    if (!product?.instagramEmbeds) return [];
-    if (Array.isArray(product.instagramEmbeds)) return product.instagramEmbeds.filter(e => e.enabled);
-    try {
-      const parsed = JSON.parse(product.instagramEmbeds);
-      return Array.isArray(parsed) ? parsed.filter(e => e.enabled) : [];
-    } catch {
-      return [];
-    }
-  }, [product?.instagramEmbeds]);
+  const instagramEmbeds = useMemo(
+    () => parseInstagramEmbedsList(product?.instagramEmbeds),
+    [product?.instagramEmbeds]
+  );
 
-  // Combined media: images, videos, and Instagram embeds
   const media = useMemo(() => {
     const imgItems = selectedColorImages.map((url) => ({ type: "image", url }));
     const vidItems = videos.map((url) => ({ type: "video", url }));
@@ -156,19 +234,16 @@ export default function ProductDetail() {
     return [...imgItems, ...vidItems, ...instaItems];
   }, [selectedColorImages, videos, instagramEmbeds]);
 
-  const activeMedia = media[activeImageIndex] || media[0] || null;
-  const activeImage = activeMedia?.type === "image" ? activeMedia.url : null;
-  const activeInstagram = activeMedia?.type === "instagram" ? activeMedia.url : null;
-  const instagramEmbedRef = useRef(null);
+  const activeMedia = media[activeMediaIndex] || media[0] || null;
+  const activeImageUrl = activeMedia?.type === "image" ? activeMedia.url : null;
+  const activeInstagramUrl = activeMedia?.type === "instagram" ? activeMedia.url : null;
 
-  const toggleSection = (key) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
+  const weightOptionsParsed = useMemo(() => parseWeightOptionsSafe(product), [product]);
+
+  const resolvedPricing = useMemo(
+    () => resolveDisplayedPricing(product, selectedWeight, selectedSize, sizeOptions),
+    [product, selectedWeight, selectedSize, sizeOptions]
+  );
 
   useEffect(() => {
     const ac = new AbortController();
@@ -182,7 +257,6 @@ export default function ProductDetail() {
         const initialColorId = Array.isArray(data?.colors) && data.colors.length > 0 ? data.colors[0].id : null;
         setSelectedColorId(initialColorId);
 
-        // Handle weight-based products (fruits)
         if (data?.weightOptions) {
           try {
             const weightOpts = Array.isArray(data.weightOptions) ? data.weightOptions : JSON.parse(data.weightOptions);
@@ -194,21 +268,18 @@ export default function ProductDetail() {
             setSelectedWeight(null);
             setSelectedSize(null);
           }
-        }
-        // Handle single price products
-        else if (data?.hasSinglePrice && data.singlePrice) {
+        } else if (data?.hasSinglePrice && data.singlePrice) {
           setSelectedSize({
             id: 0,
             label: "Standard",
             price: parseFloat(data.singlePrice),
-            originalPrice: data.originalPrice != null && data.originalPrice !== "" ? parseFloat(data.originalPrice) : null,
+            originalPrice:
+              data.originalPrice != null && data.originalPrice !== "" ? parseFloat(data.originalPrice) : null,
           });
         } else {
           let nextSizes = [];
           if (Array.isArray(data?.variants) && data.variants.length > 0) {
-            const variantPool = initialColorId
-              ? data.variants.filter((v) => v.colorId === initialColorId)
-              : data.variants;
+            const variantPool = initialColorId ? data.variants.filter((v) => v.colorId === initialColorId) : data.variants;
             nextSizes = deriveSizeOptionsFromVariants(variantPool);
           } else if (data?.sizes && data.sizes.length > 0) {
             nextSizes = data.sizes;
@@ -216,15 +287,13 @@ export default function ProductDetail() {
           setSelectedSize(pickPreferredSize(nextSizes));
         }
         setQuantity(1);
-        setActiveImageIndex(0);
+        setActiveMediaIndex(0);
         setLoading(false);
 
-        // Initialize Instagram embeds if present (after DOM renders)
         if (data?.instagramEmbeds?.length > 0) {
           setTimeout(() => initializeInstagramEmbeds(), 300);
         }
 
-        // Fetch recommendations using the recommendation engine
         setLoadingRecommendations(true);
         fetch(`${API}/recommendations/${data.id}?limit=10`, { signal: ac.signal })
           .then((res) => res.json())
@@ -238,16 +307,12 @@ export default function ProductDetail() {
             setLoadingRecommendations(false);
           });
 
-        // Fetch similar products from the same category (use first category if multiple)
         const firstCategory = data?.categories && data.categories.length > 0 ? data.categories[0] : data?.category;
         if (firstCategory?.slug) {
           fetch(`${API}/products?category=${firstCategory.slug}&limit=10`, { signal: ac.signal })
             .then((res) => res.json())
             .then((products) => {
-              // Filter out the current product
-              const similar = Array.isArray(products) 
-                ? products.filter((p) => p.id !== Number(id))
-                : [];
+              const similar = Array.isArray(products) ? products.filter((p) => p.id !== Number(id)) : [];
               setSimilarProducts(similar);
             })
             .catch((error) => {
@@ -266,16 +331,15 @@ export default function ProductDetail() {
   }, [id, addViewed]);
 
   useEffect(() => {
-    setActiveImageIndex(0);
+    setActiveMediaIndex(0);
   }, [selectedColorId]);
 
   useEffect(() => {
-    if (activeImageIndex >= media.length) {
-      setActiveImageIndex(0);
+    if (activeMediaIndex >= media.length) {
+      setActiveMediaIndex(0);
     }
-  }, [activeImageIndex, media.length]);
+  }, [activeMediaIndex, media.length]);
 
-  // Fetch reviews for this product
   useEffect(() => {
     if (!id) return;
     const ac = new AbortController();
@@ -298,7 +362,6 @@ export default function ProductDetail() {
     return () => ac.abort();
   }, [id]);
 
-  // Fetch review eligibility when logged in
   useEffect(() => {
     if (!id || !isAuthenticated) {
       setEligibility(null);
@@ -337,11 +400,28 @@ export default function ProductDetail() {
         method: "POST",
         headers,
         credentials: "include",
-        body: JSON.stringify({ productId: product.id, rating: reviewRating, comment: reviewComment.trim() || undefined }),
+        body: JSON.stringify({
+          productId: product.id,
+          rating: reviewRating,
+          comment: reviewComment.trim() || undefined,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
-        setEligibility((prev) => (prev ? { ...prev, canReview: false, existingReview: { id: data.id, rating: data.rating, comment: data.comment, createdAt: data.createdAt } } : null));
+        setEligibility((prev) =>
+          prev
+            ? {
+                ...prev,
+                canReview: false,
+                existingReview: {
+                  id: data.id,
+                  rating: data.rating,
+                  comment: data.comment,
+                  createdAt: data.createdAt,
+                },
+              }
+            : null
+        );
         setReviewRating(0);
         setReviewComment("");
         toast.success("Thank you for your review!");
@@ -365,88 +445,167 @@ export default function ProductDetail() {
     }
   };
 
-  // Variant-specific stock (weight, size, or product-level)
   const stock = useMemo(() => {
     if (!product) return 0;
     if (selectedWeight && product.weightOptions) {
-      try {
-        const opts = Array.isArray(product.weightOptions) ? product.weightOptions : JSON.parse(product.weightOptions || "[]");
-        const w = opts.find((o) => String(o.weight).trim() === String(selectedWeight).trim());
-        if (w) return Math.max(0, Number(w.stock ?? product.stock ?? 0));
-      } catch { /* ignore parse error */ }
+      const opts = parseWeightOptions(product);
+      const w = findWeightOption(opts, selectedWeight);
+      if (w) return Math.max(0, Number(w.stock ?? product.stock ?? 0));
       return 0;
     }
     if (selectedSize && selectedSize.id !== 0) {
       if (typeof selectedSize.stock === "number") return Math.max(0, selectedSize.stock);
-
       const s = product.sizes?.find((sz) => sz.id === selectedSize.id);
       if (s && typeof s.stock === "number") return Math.max(0, s.stock);
     }
     return Math.max(0, typeof product.stock === "number" ? product.stock : 0);
   }, [product, selectedWeight, selectedSize]);
+
   const outOfStock = stock <= 0;
   const lowStock = stock > 0 && stock <= 5;
   const maxQty = Math.max(1, stock);
+
+  const hasSinglePriceSelection = Boolean(product?.hasSinglePrice && product?.singlePrice);
+  const hasSizeOrWeightSelection = Boolean(selectedWeight || selectedSize);
+  const canSelectForCart = hasSizeOrWeightSelection || hasSinglePriceSelection;
 
   const handleAddToCart = () => {
     if (outOfStock) {
       toast.error("This product is out of stock");
       return;
     }
-    // Check for weight-based products first
     if (selectedWeight) {
-      const qty = Math.min(quantity, maxQty);
-      addToCart(product, null, qty, selectedWeight);
+      addToCart(product, null, Math.min(quantity, maxQty), selectedWeight);
       return;
     }
-    // Fallback to size-based or single-price products
-    if (!selectedSize && !(product?.hasSinglePrice && product?.singlePrice)) {
+    if (!selectedSize && !hasSinglePriceSelection) {
       toast.error("Please select a size or weight");
       return;
     }
-    const qty = Math.min(quantity, maxQty);
-    addToCart(product, selectedSize, qty);
+    addToCart(product, selectedSize, Math.min(quantity, maxQty));
+  };
+
+  const handleBuyNow = () => {
+    if (outOfStock) {
+      toast.error("This product is out of stock");
+      return;
+    }
+    if (!selectedWeight && !selectedSize && !hasSinglePriceSelection) {
+      toast.error("Please select a weight or size");
+      return;
+    }
+    handleAddToCart();
+    navigate("/checkout");
   };
 
   const stickyCanAdd = useMemo(() => {
     if (!product) return false;
-    const hasSelection = Boolean(selectedWeight || selectedSize || (product?.hasSinglePrice && product?.singlePrice));
-    return !outOfStock && hasSelection;
-  }, [product, selectedWeight, selectedSize, outOfStock]);
+    return !outOfStock && canSelectForCart;
+  }, [product, outOfStock, canSelectForCart]);
 
   const stickyPriceText = useMemo(() => {
     if (!product) return "Select size/weight";
-    try {
-      if (selectedWeight && product?.weightOptions) {
-        const opts = Array.isArray(product.weightOptions) ? product.weightOptions : JSON.parse(product.weightOptions || "[]");
-        const w = opts.find((o) => String(o.weight).trim() === String(selectedWeight).trim());
-        if (w) return `₹${Number(w.price).toLocaleString("en-IN")}`;
-      }
-
-      if (selectedSize && selectedSize.id !== 0) {
-        return `₹${Number(selectedSize.price).toLocaleString("en-IN")}`;
-      }
-
-      if (product?.hasSinglePrice && product?.singlePrice != null) {
-        return `₹${Number(product.singlePrice).toLocaleString("en-IN")}`;
-      }
-
-      if (sizeOptions.length) {
-        const minSize = sizeOptions.reduce((a, b) => (Number(a.price) <= Number(b.price) ? a : b));
-        if (minSize?.price != null) return `₹${Number(minSize.price).toLocaleString("en-IN")}`;
-      }
-    } catch {
-      // ignore parse errors
-    }
+    if (resolvedPricing.selling != null) return formatInr(resolvedPricing.selling);
     return "Select size/weight";
-  }, [product, selectedWeight, selectedSize, sizeOptions]);
+  }, [product, resolvedPricing.selling]);
+
+  const narrativeParagraphs = useMemo(() => {
+    const text = (product?.description || "").trim();
+    if (!text) return [];
+    const parts = text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+    return parts.length ? parts : [text];
+  }, [product?.description]);
+
+  const specRows = useMemo(() => {
+    if (!product) return [];
+    const rows = [];
+    const cat = product.categories?.[0]?.name || product.category?.name;
+    if (cat) rows.push({ label: "Category", value: cat });
+    rows.push({
+      label: "Availability",
+      value: stock <= 0 ? "Out of stock" : `${stock} available`,
+    });
+    const variant = Array.isArray(product.variants)
+      ? product.variants.find((x) => x.id === selectedSize?.id)
+      : null;
+    if (variant?.sku) rows.push({ label: "SKU", value: variant.sku });
+    if (selectedWeight) rows.push({ label: "Weight / pack", value: String(selectedWeight) });
+    return rows;
+  }, [product, stock, selectedSize, selectedWeight]);
+
+  const completeSetItems = useMemo(() => {
+    const rec = recommendedProducts.slice(0, 2);
+    if (rec.length >= 2) return rec;
+    const sim = similarProducts.filter((p) => !rec.some((r) => r.id === p.id));
+    return [...rec, ...sim].slice(0, 2);
+  }, [recommendedProducts, similarProducts]);
+
+  const completeSetTotal = useMemo(() => {
+    let sum = 0;
+    let any = false;
+    for (const p of completeSetItems) {
+      const n = getMinPriceForProduct(p);
+      if (n != null) {
+        sum += n;
+        any = true;
+      }
+    }
+    return any ? sum : null;
+  }, [completeSetItems]);
+
+  const lineTotalDisplay = useMemo(() => {
+    if (!selectedWeight && !selectedSize) return null;
+    if (selectedWeight) {
+      const opts = parseWeightOptions(product);
+      const w = findWeightOption(opts, selectedWeight);
+      return w ? (Number(w.price) * quantity).toLocaleString("en-IN") : "0";
+    }
+    return (Number(selectedSize.price) * quantity).toLocaleString("en-IN");
+  }, [product, selectedWeight, selectedSize, quantity]);
+
+  const priceBlock = useMemo(() => {
+    const { selling, mrp, showFrom } = resolvedPricing;
+    if (selling == null) {
+      return <span className="text-sm font-medium text-[#474747]">Select options to see price</span>;
+    }
+    const pct = discountPercent(mrp, selling);
+    return (
+      <div className="flex flex-wrap items-baseline gap-3 py-2">
+        <span className="pd-headline text-3xl sm:text-4xl font-black text-[#1a1c1d] tracking-tight">
+          {showFrom ? "From " : ""}₹{selling.toLocaleString("en-IN")}
+        </span>
+        {mrp != null && mrp > selling && (
+          <>
+            <span className="text-lg line-through text-[#474747]/80">₹{mrp.toLocaleString("en-IN")}</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">{pct}% off</span>
+          </>
+        )}
+      </div>
+    );
+  }, [resolvedPricing]);
+
+  const collectionLabel = (primaryCategory?.name || "Collection").toUpperCase();
+
+  const handleColorPick = (color) => {
+    const filteredVariants = Array.isArray(product?.variants)
+      ? product.variants.filter((v) => v.colorId === color.id)
+      : [];
+    const nextSizes = deriveSizeOptionsFromVariants(filteredVariants);
+    setSelectedColorId(color.id);
+    if (nextSizes.length > 0) {
+      setSelectedSize(pickPreferredSize(nextSizes));
+      setSelectedWeight(null);
+    } else if (!(product?.hasSinglePrice && product?.singlePrice)) {
+      setSelectedSize(null);
+    }
+    setQuantity(1);
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
+      <div className="min-h-screen flex items-center justify-center pd-editorial bg-[#f9f9fb]">
         <div
-          className="animate-spin rounded-full w-10 h-10 border-2 border-t-transparent"
-          style={{ borderColor: "var(--primary)" }}
+          className="animate-spin rounded-full w-10 h-10 border-2 border-t-transparent border-black/20"
           aria-hidden="true"
         />
       </div>
@@ -455,134 +614,83 @@ export default function ProductDetail() {
 
   if (!product) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-bold mb-4" style={{ color: "var(--foreground)" }}>Product not found</h2>
-          <Link to="/" className="text-pink-600 hover:underline">
-            Go back to home
+      <div className="min-h-screen flex items-center justify-center pd-editorial bg-[#f9f9fb]">
+        <div className="text-center px-4">
+          <h2 className="pd-headline text-xl font-black uppercase tracking-tight mb-4 text-[#1a1c1d]">Product not found</h2>
+          <Link to="/" className="text-sm font-semibold text-[#474747] underline underline-offset-4 hover:text-black">
+            Back to Shoposphere
           </Link>
         </div>
       </div>
     );
   }
 
+  const mainAspectPadding =
+    activeMedia?.type === "instagram" ? "125%" : activeMedia?.type === "video" ? "56.25%" : "125%";
+
   return (
     <>
-      <div className="min-h-screen" style={{ backgroundColor: "var(--background)" }}>
-      <div className="max-w-7xl mx-auto">
-        {/* Top bar */}
-        <div className="px-4 sm:px-6 lg:px-8 pt-6">
-          <nav className="mb-5">
-            <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm" style={{ color: "oklch(55% .02 340)" }}>
-              <li>
-                <Link to="/" className="hover:underline" style={{ color: "oklch(40% .02 340)" }}>
-                  Home
-                </Link>
-              </li>
-              <li>/</li>
-              <li>
-                <Link to="/categories" className="hover:underline" style={{ color: "oklch(40% .02 340)" }}>
-                  Shop
-                </Link>
-              </li>
-              {product.categories && product.categories.length > 0 ? (
-                <>
-                  <li>/</li>
-                  <li>
-                    <Link to={`/category/${product.categories[0].slug}`} className="hover:underline" style={{ color: "oklch(40% .02 340)" }}>
-                      {product.categories[0].name}
-                    </Link>
-                  </li>
-                </>
-              ) : product.category ? (
-                <>
-                  <li>/</li>
-                  <li>
-                    <Link to={`/category/${product.category.slug}`} className="hover:underline" style={{ color: "oklch(40% .02 340)" }}>
-                      {product.category.name}
-                    </Link>
-                  </li>
-                </>
-              ) : null}
-              <li>/</li>
-              <li className="font-semibold" style={{ color: "oklch(20% .02 340)" }}>
-                {product.name}
-              </li>
-            </ol>
-          </nav>
-        </div>
-
-        <div className="px-4 sm:px-6 lg:px-8 pb-28 lg:pb-16">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-            {/* Left: Media gallery */}
-            <section className="lg:col-span-7">
-              <div className="lg:flex lg:gap-4">
-                {/* Thumbnails (desktop vertical) */}
-                {media.length > 0 ? (
-                  <div className="hidden lg:flex flex-col gap-3 w-20 shrink-0">
-                    {media.slice(0, 8).map((item, idx) => {
-                      const active = idx === activeImageIndex;
-                      return (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setActiveImageIndex(idx)}
-                          onMouseEnter={() => setActiveImageIndex(idx)}
-                          className={[
-                            "relative rounded-xl overflow-hidden border transition-transform duration-200",
-                            active ? "ring-2 ring-offset-2" : "hover:scale-[1.02]",
-                          ].join(" ")}
-                          style={{
-                            borderColor: active ? "oklch(88% .06 340)" : "oklch(92% .04 340)",
-                            ringColor: "oklch(88% .06 340)",
-                          }}
-                        >
-                          <div className="aspect-square" style={{ backgroundColor: "var(--card-white)" }}>
-                            {item.type === "instagram" ? (
-                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500">
-                                <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
-                                </svg>
-                              </div>
-                            ) : item.type === "video" ? (
-                              <video
-                                src={item.url}
-                                className="w-full h-full object-cover"
-                                muted
-                                playsInline
-                                preload="metadata"
-                              />
-                            ) : (
-                              <img
-                                src={item.url}
-                                alt={`${product.name} ${idx + 1}`}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                                decoding="async"
-                                width={96}
-                                height={96}
-                              />
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+      <div className="min-h-screen pd-editorial bg-[#f9f9fb] text-[#1a1c1d]">
+        <div className="max-w-7xl mx-auto">
+          <div className="px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+            <nav className="mb-8 sm:mb-10" aria-label="Breadcrumb">
+              <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm font-medium uppercase tracking-[0.2em] text-[#474747]/70">
+                <li>
+                  <Link to="/categories" className="hover:text-[#1a1c1d] transition-colors">
+                    Shop
+                  </Link>
+                </li>
+                <li aria-hidden className="text-[10px] opacity-60">
+                  ›
+                </li>
+                {primaryCategory ? (
+                  <>
+                    <li>
+                      <Link
+                        to={`/category/${primaryCategory.slug}`}
+                        className="hover:text-[#1a1c1d] transition-colors"
+                      >
+                        {primaryCategory.name}
+                      </Link>
+                    </li>
+                    <li aria-hidden className="text-[10px] opacity-60">
+                      ›
+                    </li>
+                  </>
                 ) : null}
+                <li className="font-bold text-black tracking-normal normal-case max-w-[min(100%,16rem)] sm:max-w-xl truncate">
+                  {product.name}
+                </li>
+              </ol>
+            </nav>
+          </div>
 
-                {/* Primary image, video, or Instagram embed */}
-                <div className="flex-1">
-                  <div className="relative rounded-3xl overflow-hidden border" style={{ backgroundColor: "var(--card-white)", borderColor: "var(--border)" }}>
-                    <div className="relative w-full" style={{ paddingBottom: activeMedia?.type === "instagram" ? "125%" : activeMedia?.type === "video" ? "56.25%" : "100%" }}>
-                      {activeMedia?.type === "instagram" ? (
-                        <div 
-                          ref={instagramEmbedRef}
-                          className="absolute inset-0 w-full h-full overflow-auto bg-gray-50 flex items-center justify-center p-4"
-                          dangerouslySetInnerHTML={{
-                            __html: `
+          <div className="px-4 sm:px-6 lg:px-8 pb-28 lg:pb-24">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12">
+              <section className="lg:col-span-7">
+                <div className="flex flex-col md:flex-row gap-4">
+                  {media.length > 0 ? (
+                    <ProductMediaThumbnails
+                      media={media}
+                      maxItems={8}
+                      activeIndex={activeMediaIndex}
+                      onPick={setActiveMediaIndex}
+                      productName={product.name}
+                      layout="sidebar"
+                    />
+                  ) : null}
+
+                  <div className="order-1 md:order-2 flex-1 min-w-0">
+                    <div className="relative rounded-2xl overflow-hidden bg-[#f3f3f5] editorial-pdp-shadow border border-black/[0.06]">
+                      <div className="relative w-full" style={{ paddingBottom: mainAspectPadding }}>
+                        {activeMedia?.type === "instagram" ? (
+                          <div
+                            className="absolute inset-0 w-full h-full overflow-auto bg-gray-50 flex items-center justify-center p-4"
+                            dangerouslySetInnerHTML={{
+                              __html: `
                               <blockquote 
                                 class="instagram-media" 
-                                data-instgrm-permalink="${activeInstagram}/?utm_source=ig_embed&utm_campaign=loading" 
+                                data-instgrm-permalink="${activeInstagramUrl}/?utm_source=ig_embed&utm_campaign=loading" 
                                 data-instgrm-version="14"
                                 style="
                                   background:#FFF; 
@@ -596,285 +704,195 @@ export default function ProductDetail() {
                                   width:99.375%;
                                 "
                               ></blockquote>
-                            `
-                          }}
-                        />
-                      ) : activeMedia?.type === "video" ? (
-                        <video
-                          src={activeMedia.url}
-                          className="absolute inset-0 w-full h-full object-contain bg-black"
-                          controls
-                          playsInline
-                          preload="metadata"
-                        />
-                      ) : activeImage ? (
-                        <img
-                          src={activeImage}
-                          alt={product.name}
-                          className="absolute inset-0 w-full h-full object-cover"
-                          decoding="async"
-                          loading="eager"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: "oklch(92% .04 340)" }}>
-                          <img src="/logo.png" alt="Gift Choice Logo" className="w-24 h-24 object-contain opacity-50" />
-                        </div>
-                      )}
+                            `,
+                            }}
+                          />
+                        ) : activeMedia?.type === "video" ? (
+                          <video
+                            src={activeMedia.url}
+                            className="absolute inset-0 w-full h-full object-contain bg-black"
+                            controls
+                            playsInline
+                            preload="metadata"
+                          />
+                        ) : activeImageUrl ? (
+                          <img
+                            src={activeImageUrl}
+                            alt={product.name}
+                            className="absolute inset-0 w-full h-full object-cover"
+                            decoding="async"
+                            loading="eager"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center bg-[#eee]">
+                            <img src="/logo.png" alt="" className="w-24 h-24 object-contain opacity-40" />
+                          </div>
+                        )}
 
-                      {/* Badges */}
-                      <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-                        {product.isReady60Min ? (
-                          <span className="px-3 py-1 text-xs font-bold rounded-full bg-white/90 shadow" style={{ color: "oklch(20% .02 340)" }}>
-                            60 Min
-                          </span>
-                        ) : null}
-                        {product.isFestival ? (
-                          <span className="px-3 py-1 text-xs font-bold rounded-full bg-white/90 shadow" style={{ color: "oklch(20% .02 340)" }}>
-                            Festival
-                          </span>
-                        ) : null}
-                        {product.isNew ? (
-                          <span className="px-3 py-1 text-xs font-bold rounded-full bg-white/90 shadow" style={{ color: "oklch(20% .02 340)" }}>
-                            New
-                          </span>
-                        ) : null}
-                        {product.badge ? (
-                          <span className="px-3 py-1 text-xs font-bold rounded-full bg-pink-500 text-white shadow">
-                            {product.badge}
-                          </span>
-                        ) : null}
+                        <ProductBadges product={product} />
                       </div>
                     </div>
-                  </div>
 
-                  {/* Thumbnails (mobile horizontal) */}
-                  {media.length > 1 ? (
-                    <div className="mt-4 flex gap-3 overflow-x-auto pb-2 lg:hidden" style={{ WebkitOverflowScrolling: "touch" }}>
-                      {media.slice(0, 10).map((item, idx) => {
-                        const active = idx === activeImageIndex;
-                        return (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => setActiveImageIndex(idx)}
-                            className={[
-                              "shrink-0 w-20 rounded-2xl overflow-hidden border transition-transform duration-200",
-                              active ? "ring-2 ring-offset-2" : "active:scale-95",
-                            ].join(" ")}
-                            style={{ borderColor: "oklch(92% .04 340)" }}
-                          >
-                            <div className="aspect-square" style={{ backgroundColor: "var(--card-white)" }}>
-                              {item.type === "video" ? (
-                                <video
-                                  src={item.url}
-                                  className="w-full h-full object-cover"
-                                  muted
-                                  playsInline
-                                  preload="metadata"
-                                />
-                              ) : (
-                                <img
-                                  src={item.url}
-                                  alt={`${product.name} ${idx + 1}`}
-                                  className="w-full h-full object-cover"
-                                  loading="lazy"
-                                  decoding="async"
-                                  width={96}
-                                  height={96}
-                                />
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : null}
+                    {media.length > 1 ? (
+                      <ProductMediaThumbnails
+                        media={media}
+                        maxItems={10}
+                        activeIndex={activeMediaIndex}
+                        onPick={setActiveMediaIndex}
+                        productName={product.name}
+                        layout="strip"
+                      />
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            </section>
+              </section>
 
-            {/* Right: Sticky buy box */}
-            <aside className="lg:col-span-5">
-              <div className="lg:sticky lg:top-6">
-                <div className="rounded-3xl border p-6 shadow-sm" style={{ backgroundColor: "var(--card-white)", borderColor: "var(--border)" }}>
-                  <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight" style={{ color: "oklch(20% .02 340)" }}>
-                    {product.name}
-                  </h1>
-
-                  {/* Price once at top: current, struck MRP, discount */}
-                  <div className="mt-4 flex flex-wrap items-baseline gap-2">
-                    {(() => {
-                      let selling = null;
-                      let mrp = null;
-                      if (selectedWeight && product?.weightOptions) {
-                        try {
-                          const weightOpts = Array.isArray(product.weightOptions) ? product.weightOptions : JSON.parse(product.weightOptions);
-                          const w = weightOpts.find((x) => x.weight === selectedWeight);
-                          if (w) {
-                            selling = Number(w.price);
-                            mrp = w.originalPrice != null && w.originalPrice !== "" ? Number(w.originalPrice) : null;
-                          }
-                        } catch { /* weightOptions parse */ }
-                      } else if (selectedSize) {
-                        selling = Number(selectedSize.price);
-                        mrp = selectedSize.originalPrice != null && selectedSize.originalPrice !== "" ? Number(selectedSize.originalPrice) : (product?.hasSinglePrice ? (product?.originalPrice != null ? Number(product.originalPrice) : null) : null);
-                      } else if (product?.hasSinglePrice && product?.singlePrice != null) {
-                        selling = Number(product.singlePrice);
-                        mrp = product.originalPrice != null && product.originalPrice !== "" ? Number(product.originalPrice) : null;
-                      } else if (sizeOptions.length) {
-                        const minSize = sizeOptions.reduce((a, b) => (Number(a.price) <= Number(b.price) ? a : b));
-                        selling = Number(minSize.price);
-                        mrp = minSize.originalPrice != null && minSize.originalPrice !== "" ? Number(minSize.originalPrice) : null;
-                      }
-                      if (selling == null) return <span className="text-sm text-design-muted">Select size to see price</span>;
-                      const showFrom = sizeOptions.length && !selectedSize;
-                      const discountPct = mrp != null && mrp > selling ? Math.round(((mrp - selling) / mrp) * 100) : 0;
-                      return (
-                        <>
-                          <span className="text-xl font-bold tracking-tight" style={{ color: "var(--foreground)" }}>
-                            {showFrom ? "From " : ""}₹{selling.toLocaleString("en-IN")}
-                          </span>
-                          {mrp != null && mrp > selling && (
-                            <>
-                              <span className="text-base line-through text-design-muted">
-                                ₹{mrp.toLocaleString("en-IN")}
-                              </span>
-                              <span className="text-sm font-semibold" style={{ color: "var(--success)" }}>
-                                {discountPct}% OFF
-                              </span>
-                            </>
-                          )}
-                        </>
-                      );
-                    })()}
+              <aside className="lg:col-span-5">
+                <div className="lg:sticky lg:top-24 space-y-8 lg:space-y-10">
+                  <div className="space-y-4">
+                    <p className="text-[#474747] text-xs font-bold uppercase tracking-[0.2em]">{collectionLabel}</p>
+                    <div className="flex items-start justify-between gap-4">
+                      <h1 className="pd-headline text-3xl sm:text-4xl lg:text-[2.75rem] font-black uppercase tracking-tighter leading-[0.98] text-[#1a1c1d] flex-1 min-w-0">
+                        {product.name}
+                      </h1>
+                      <button
+                        type="button"
+                        onClick={() => toggleWishlist(product.id)}
+                        disabled={isWishlistToggling}
+                        className="shrink-0 h-11 w-11 rounded-full border border-black/10 bg-white flex items-center justify-center transition-all hover:border-black/25 disabled:opacity-50 wishlist-heart-btn"
+                        aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                      >
+                        {isWishlisted ? (
+                          <svg
+                            className="w-5 h-5 wishlist-heart-filled text-red-600"
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+                          </svg>
+                        ) : (
+                          <svg
+                            className="w-5 h-5 wishlist-heart-outline text-[#1a1c1d]"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4">
+                      <StarRating value={reviewsData.averageRating} readonly size="md" />
+                      <a
+                        href="#product-reviews"
+                        className="text-sm font-semibold text-[#474747] underline underline-offset-4 hover:text-black"
+                      >
+                        {reviewsData.totalReviews === 0
+                          ? "Write a review"
+                          : `${reviewsData.totalReviews} ${reviewsData.totalReviews === 1 ? "review" : "reviews"}`}
+                      </a>
+                    </div>
+                    {priceBlock}
                   </div>
 
-
-                  {/* Color selector */}
                   {colorOptions.length > 0 ? (
-                    <div className="mt-6">
-                      <p className="text-xs font-semibold text-design-foreground mb-2.5">Select color</p>
-                      <div className="flex flex-wrap gap-2">
+                    <div className="space-y-4" id="product-color-options">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-[#1a1c1d]">
+                          Color: {selectedColor?.name || "Select"}
+                        </h3>
+                      </div>
+                      <div className="flex flex-wrap gap-4">
                         {colorOptions.map((color) => {
                           const active = selectedColorId === color.id;
                           return (
                             <button
                               key={color.id}
                               type="button"
-                              onClick={() => {
-                                const filteredVariants = Array.isArray(product?.variants)
-                                  ? product.variants.filter((v) => v.colorId === color.id)
-                                  : [];
-                                const nextSizes = deriveSizeOptionsFromVariants(filteredVariants);
-                                setSelectedColorId(color.id);
-                                if (nextSizes.length > 0) {
-                                  setSelectedSize(pickPreferredSize(nextSizes));
-                                  setSelectedWeight(null);
-                                } else if (!(product?.hasSinglePrice && product?.singlePrice)) {
-                                  setSelectedSize(null);
-                                }
-                                setQuantity(1);
-                              }}
-                              className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition-all duration-200 hover:opacity-90"
-                              style={
+                              title={color.name}
+                              onClick={() => handleColorPick(color)}
+                              className={[
+                                "w-12 h-12 rounded-full p-0.5 transition-all",
                                 active
-                                  ? { borderColor: "var(--foreground)", borderWidth: "1.5px", backgroundColor: "var(--muted)", color: "var(--foreground)" }
-                                  : { borderColor: "var(--border)", backgroundColor: "var(--card)", color: "var(--foreground)" }
-                              }
+                                  ? "ring-2 ring-offset-2 ring-black border-2 border-black"
+                                  : "border border-[#c6c6c6] hover:border-black",
+                              ].join(" ")}
+                              style={{ backgroundColor: color.hexCode || "#888" }}
                               aria-pressed={active}
                               aria-label={`Color ${color.name}`}
-                            >
-                              <span
-                                className="w-3 h-3 rounded-full border"
-                                style={{ backgroundColor: color.hexCode || "#000000", borderColor: "var(--border)" }}
-                              />
-                              <span>{color.name}</span>
-                            </button>
+                            />
                           );
                         })}
                       </div>
                     </div>
                   ) : null}
 
-
-                  {/* Weight selector - compact label-only buttons */}
                   {product?.weightOptions ? (
-                    <div className="mt-6">
-                      <p className="text-xs font-semibold text-design-foreground mb-2.5">Select weight</p>
-                      <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
-                        {(() => {
-                          try {
-                            const weightOpts = Array.isArray(product.weightOptions) ? product.weightOptions : JSON.parse(product.weightOptions);
-                            return weightOpts.map((weightOpt) => {
-                              const active = selectedWeight === weightOpt.weight;
-                              return (
-                                <button
-                                  key={weightOpt.weight}
-                                  type="button"
-                                  aria-pressed={active}
-                                  aria-label={`Weight ${weightOpt.weight}`}
-                                  onClick={() => setSelectedWeight(weightOpt.weight)}
-                                  className="min-h-[36px] rounded-xl border px-2.5 py-2 text-xs font-medium transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
-                                  style={
-                                    active
-                                      ? { borderColor: "var(--foreground)", borderWidth: "1.5px", backgroundColor: "var(--muted)", color: "var(--foreground)" }
-                                      : { borderColor: "var(--border)", backgroundColor: "var(--card)" }
-                                  }
-                                >
-                                  {weightOpt.weight}
-                                </button>
-                              );
-                            });
-                          } catch {
-                            return <div className="text-sm text-destructive col-span-full">Error loading weight options</div>;
-                          }
-                        })()}
+                    <div className="space-y-4" id="product-size-guide">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-[#1a1c1d]">Select weight</h3>
                       </div>
-                    </div>
-                  ) : product.hasSinglePrice ? (
-                    <div className="mt-6 rounded-2xl border px-4 py-3" style={{ borderColor: "oklch(92% .04 340)" }}>
-                      <div className="text-sm font-semibold" style={{ color: "oklch(55% .02 340)" }}>
-                        Price
-                      </div>
-                      <div className="flex flex-wrap items-baseline gap-2 mt-1">
-                        <span className="text-lg font-extrabold" style={{ color: "oklch(20% .02 340)" }}>
-                          ₹{Number(product.singlePrice).toLocaleString("en-IN")}
-                        </span>
-                        {product.originalPrice != null && Number(product.originalPrice) > Number(product.singlePrice) && (
-                          <>
-                            <span className="text-sm line-through" style={{ color: "oklch(55% .02 340)" }}>
-                              ₹{Number(product.originalPrice).toLocaleString("en-IN")}
-                            </span>
-                            <span className="text-xs font-semibold text-green-600">
-                              {Math.round(((product.originalPrice - product.singlePrice) / product.originalPrice) * 100)}% OFF
-                            </span>
-                          </>
+                      <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                        {!weightOptionsParsed.ok ? (
+                          <div className="text-sm text-red-600 col-span-full">Error loading weight options</div>
+                        ) : (
+                          weightOptionsParsed.options.map((weightOpt) => {
+                            const active = selectedWeight === weightOpt.weight;
+                            return (
+                              <button
+                                key={weightOpt.weight}
+                                type="button"
+                                aria-pressed={active}
+                                aria-label={`Weight ${weightOpt.weight}`}
+                                onClick={() => setSelectedWeight(weightOpt.weight)}
+                                className={[
+                                  "py-3 px-2 rounded-xl text-xs font-bold transition-all",
+                                  active
+                                    ? "bg-black text-white"
+                                    : "bg-[#e8e8ea] text-[#1a1c1d] hover:bg-black hover:text-white",
+                                ].join(" ")}
+                              >
+                                {weightOpt.weight}
+                              </button>
+                            );
+                          })
                         )}
                       </div>
                     </div>
-                  ) : sizeOptions.length ? (
-                    <div className="mt-6">
-                      <p className="text-xs font-semibold text-design-foreground mb-2.5">Select size</p>
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                  ) : !product.hasSinglePrice && sizeOptions.length ? (
+                    <div className="space-y-4" id="product-size-guide">
+                      <div className="flex justify-between items-center gap-2">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-[#1a1c1d]">Select size</h3>
+                        <span className="text-xs font-bold text-[#474747] underline underline-offset-4 cursor-default">
+                          Size guide
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-3">
                         {sizeOptions.map((size) => {
                           const active = selectedSize?.id === size.id;
-                          const outOfStock = Math.max(0, Number(size.stock ?? 0)) <= 0;
+                          const sizeOos = Math.max(0, Number(size.stock ?? 0)) <= 0;
                           return (
                             <button
                               key={size.id}
                               type="button"
                               aria-pressed={active}
-                              aria-label={`Size ${size.label}${outOfStock ? ", out of stock" : ""}`}
-                              disabled={outOfStock}
-                              onClick={() => !outOfStock && setSelectedSize(size)}
-                              className={`min-h-[36px] rounded-xl border px-2.5 py-2 text-xs font-medium transition-all duration-200 min-w-0 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${outOfStock ? "line-through" : ""}`}
-                              style={
+                              aria-label={`Size ${size.label}${sizeOos ? ", out of stock" : ""}`}
+                              disabled={sizeOos}
+                              onClick={() => !sizeOos && setSelectedSize(size)}
+                              className={[
+                                "py-3 px-2 rounded-xl text-sm font-bold transition-all",
                                 active
-                                  ? { borderColor: "var(--foreground)", borderWidth: "1.5px", backgroundColor: "var(--muted)", color: "var(--foreground)" }
-                                  : outOfStock
-                                    ? { borderColor: "var(--border)", backgroundColor: "var(--muted)", color: "var(--muted-foreground)" }
-                                    : { borderColor: "var(--border)", backgroundColor: "var(--card)" }
-                              }
+                                  ? "bg-black text-white"
+                                  : sizeOos
+                                    ? "bg-[#eee] text-[#999] line-through cursor-not-allowed"
+                                    : "bg-[#e8e8ea] text-[#1a1c1d] hover:bg-black hover:text-white",
+                              ].join(" ")}
                             >
                               {size.label}
                             </button>
@@ -882,377 +900,386 @@ export default function ProductDetail() {
                         })}
                       </div>
                     </div>
-                  ) : (
-                    <div className="mt-6 rounded-2xl border px-4 py-3 text-sm font-semibold" style={{ borderColor: "oklch(92% .04 340)", color: "oklch(55% .02 340)" }}>
-                      Weights or sizes are not available for this product.
-                    </div>
-                  )}
-
-                  {/* Stock status */}
-                  {outOfStock && (
-                    <div className="mt-6 rounded-2xl border px-4 py-3 text-sm font-semibold" style={{ borderColor: "var(--destructive)", color: "var(--destructive)", backgroundColor: "var(--secondary)" }}>
-                      Out of Stock
-                    </div>
-                  )}
-                  {lowStock && !outOfStock && (
-                    <div className="mt-6 text-sm font-medium" style={{ color: "var(--accent)" }}>
-                      Only {stock} left in stock
-                    </div>
-                  )}
-
-                  {/* Quantity */}
-                  <div className="mt-6">
-                    <div className="text-sm font-bold" style={{ color: "oklch(20% .02 340)" }}>
-                      Quantity
-                    </div>
-                    <div className="mt-3 inline-flex items-center gap-3 rounded-2xl border px-3 py-2" style={{ borderColor: "oklch(92% .04 340)" }}>
-                      <button
-                        type="button"
-                        onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                        disabled={outOfStock}
-                        className="w-9 h-9 rounded-xl border font-black disabled:opacity-50 disabled:cursor-not-allowed"
-                        style={{ borderColor: "oklch(92% .04 340)", color: "oklch(20% .02 340)" }}
-                      >
-                        −
-                      </button>
-                      <div className="w-10 text-center text-lg font-extrabold" style={{ color: "oklch(20% .02 340)" }}>
-                        {quantity}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))}
-                        disabled={outOfStock || quantity >= maxQty}
-                        className="w-9 h-9 rounded-xl border font-black disabled:opacity-50 disabled:cursor-not-allowed"
-                        style={{ borderColor: "oklch(92% .04 340)", color: "oklch(20% .02 340)" }}
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Total */}
-                  {(selectedWeight || selectedSize) ? (
-                    <div className="mt-6 rounded-2xl border px-4 py-4" style={{ borderColor: "oklch(92% .04 340)" }}>
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-semibold" style={{ color: "oklch(55% .02 340)" }}>
-                          Total
-                        </div>
-                        <div className="text-xl font-extrabold" style={{ color: "oklch(20% .02 340)" }}>
-                          ₹{selectedWeight
-                            ? (() => {
-                                try {
-                                  const weightOpts = Array.isArray(product.weightOptions) ? product.weightOptions : JSON.parse(product.weightOptions);
-                                  const w = weightOpts.find((o) => o.weight === selectedWeight);
-                                  return w ? (Number(w.price) * quantity).toFixed(0) : "0";
-                                } catch { return "0"; }
-                              })()
-                            : (Number(selectedSize.price) * quantity).toFixed(0)}
-                        </div>
-                      </div>
+                  ) : !product.hasSinglePrice ? (
+                    <div className="rounded-xl border border-black/10 px-4 py-3 text-sm font-semibold text-[#474747]">
+                      Options for this product are not available.
                     </div>
                   ) : null}
 
-                  {/* Wishlist toggle */}
-                  <button
-                    type="button"
-                    onClick={() => toggleWishlist(product.id)}
-                    disabled={isWishlistToggling}
-                    className="mt-4 w-full py-2.5 rounded-2xl font-semibold flex items-center justify-center gap-2 transition-all duration-300 border wishlist-heart-btn disabled:opacity-60"
-                    style={{
-                      borderColor: "var(--border)",
-                      color: isWishlisted ? "var(--destructive)" : "var(--foreground)",
-                      backgroundColor: "var(--secondary)",
-                    }}
-                  >
-                    {isWishlisted ? (
-                      <svg className="w-5 h-5 wishlist-heart-filled" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5 wishlist-heart-outline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                    )}
-                    {isWishlisted ? "Saved to wishlist" : "Add to wishlist"}
-                  </button>
+                  {outOfStock && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">
+                      Out of stock
+                    </div>
+                  )}
+                  {lowStock && !outOfStock && (
+                    <p className="text-sm font-semibold text-amber-800">Only {stock} left in stock</p>
+                  )}
 
-                  {/* CTAs */}
-                  <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
-                      onClick={handleAddToCart}
-                      disabled={outOfStock || (!selectedWeight && !selectedSize && !(product?.hasSinglePrice && product?.singlePrice))}
-                      className="w-full py-3 rounded-2xl font-bold transition-transform duration-200 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ backgroundColor: "oklch(92% .04 340)", color: "oklch(20% .02 340)" }}
-                    >
-                      {outOfStock ? "Out of stock" : "Add to cart"}
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (outOfStock) {
-                          toast.error("This product is out of stock");
-                          return;
-                        }
-                        if (!selectedWeight && !selectedSize && !(product?.hasSinglePrice && product?.singlePrice)) {
-                          toast.error("Please select a weight or size");
-                          return;
-                        }
-                        handleAddToCart();
-                        navigate("/checkout");
-                      }}
-                      disabled={outOfStock || (!selectedWeight && !selectedSize && !(product?.hasSinglePrice && product?.singlePrice))}
-                      className="w-full py-3 rounded-2xl font-bold transition-transform duration-200 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ backgroundColor: "oklch(55% .18 145)", color: "white" }}
-                    >
-                      Checkout
-                    </button>
+                  <div className="bg-[#f3f3f5] p-6 sm:p-8 rounded-xl border border-black/[0.08] editorial-pdp-shadow space-y-6">
+                    <div className="flex items-center gap-2 text-black font-bold">
+                      <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                        />
+                      </svg>
+                      <span className="text-sm">Complimentary delivery on qualifying orders — Shoposphere</span>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-widest text-[#1a1c1d] mb-3">Quantity</p>
+                      <div className="inline-flex items-center gap-3 rounded-full border border-black/10 bg-white px-2 py-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                          disabled={outOfStock}
+                          className="h-10 w-10 rounded-full font-bold text-lg disabled:opacity-40 hover:bg-black/5"
+                        >
+                          −
+                        </button>
+                        <span className="w-10 text-center text-lg font-black tabular-nums">{quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))}
+                          disabled={outOfStock || quantity >= maxQty}
+                          className="h-10 w-10 rounded-full font-bold text-lg disabled:opacity-40 hover:bg-black/5"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    {hasSizeOrWeightSelection ? (
+                      <div className="flex items-center justify-between border-t border-black/10 pt-4">
+                        <span className="text-xs font-bold uppercase tracking-widest text-[#474747]">Line total</span>
+                        <span className="pd-headline text-xl font-black text-[#1a1c1d]">₹{lineTotalDisplay}</span>
+                      </div>
+                    ) : null}
+
+                    <div className="space-y-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={handleAddToCart}
+                        disabled={outOfStock || !canSelectForCart}
+                        className="w-full bg-black text-[#e2e2e2] py-4 sm:py-5 rounded-full font-bold uppercase tracking-[0.15em] text-xs sm:text-sm hover:opacity-90 transition-opacity active:scale-[0.99] disabled:opacity-45 disabled:cursor-not-allowed"
+                      >
+                        {outOfStock ? "Out of stock" : "Add to cart"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleBuyNow}
+                        disabled={outOfStock || !canSelectForCart}
+                        className="w-full bg-white text-black py-4 sm:py-5 rounded-full font-bold uppercase tracking-[0.15em] text-xs sm:text-sm border border-black hover:bg-black hover:text-[#e2e2e2] transition-all active:scale-[0.99] disabled:opacity-45 disabled:cursor-not-allowed"
+                      >
+                        Buy now
+                      </button>
+                    </div>
+                    <p className="text-center text-[10px] text-[#474747] uppercase tracking-tight">
+                      Curated with care · Packed with intent — Shoposphere
+                    </p>
                   </div>
 
                   <button
                     type="button"
                     onClick={() => navigate(-1)}
-                    className="mt-4 w-full text-sm font-semibold underline"
-                    style={{ color: "oklch(40% .02 340)" }}
+                    className="text-sm font-bold text-[#474747] underline underline-offset-4 hover:text-black w-full text-left"
                   >
                     Continue shopping
                   </button>
                 </div>
+              </aside>
+            </div>
 
-                {/* Accordions */}
-                <div className="mt-4 rounded-3xl border overflow-hidden" style={{ backgroundColor: "var(--card-white)", borderColor: "var(--border)" }}>
-                  <button
-                    type="button"
-                    onClick={() => toggleSection("details")}
-                    className="w-full flex items-center justify-between px-5 py-4 text-left"
-                  >
-                    <div className="font-bold" style={{ color: "oklch(20% .02 340)" }}>
-                      Product details
+            <div className="mt-20 lg:mt-28 px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
+              <div className="lg:col-span-8 space-y-16 lg:space-y-20">
+                {narrativeParagraphs.length > 0 ? (
+                  <section className="space-y-6 lg:space-y-8">
+                    <h2 className="pd-headline text-2xl sm:text-3xl font-black uppercase tracking-tighter text-[#1a1c1d]">
+                      Product narrative
+                    </h2>
+                    <div className="space-y-6 text-[#474747] leading-relaxed text-base sm:text-lg max-w-2xl">
+                      {narrativeParagraphs.map((para, i) => (
+                        <p key={i}>{para}</p>
+                      ))}
                     </div>
-                    <div className="text-xl font-black" style={{ color: "oklch(40% .02 340)" }}>
-                      {expanded.has("details") ? "−" : "+"}
+                  </section>
+                ) : null}
+                {specRows.length > 0 ? (
+                  <section className="space-y-6 lg:space-y-8">
+                    <h2 className="pd-headline text-2xl sm:text-3xl font-black uppercase tracking-tighter text-[#1a1c1d]">
+                      Technical specifications
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 border-t border-black/10 pt-8">
+                      {specRows.map((row) => (
+                        <div
+                          key={row.label}
+                          className="flex justify-between gap-4 py-3 border-b border-black/[0.06]"
+                        >
+                          <span className="font-bold text-xs uppercase tracking-widest text-[#474747] shrink-0">
+                            {row.label}
+                          </span>
+                          <span className="text-sm font-medium text-[#1a1c1d] text-right">{row.value}</span>
+                        </div>
+                      ))}
                     </div>
-                  </button>
-                  {expanded.has("details") ? (
-                    <div className="px-5 pb-5 text-sm leading-relaxed" style={{ color: "oklch(55% .02 340)" }}>
-                      {product.description}
-                    </div>
-                  ) : null}
-
-                  <div className="h-px" style={{ backgroundColor: "oklch(92% .04 340)" }} />
-
-                  
-                </div>
+                  </section>
+                ) : null}
               </div>
-            </aside>
-          </div>
-
-          {/* Reviews Section */}
-          <section className="mt-12 px-4 sm:px-6 lg:px-8" aria-labelledby="reviews-heading">
-            <h2 id="reviews-heading" className="text-xl font-bold font-display mb-6" style={{ color: "var(--foreground)" }}>
-              Reviews
-            </h2>
-
-            {reviewsLoading ? (
-              <div className="rounded-2xl border p-6" style={{ borderColor: "var(--border)", background: "var(--background)" }}>
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="h-8 w-24 rounded-lg animate-pulse" style={{ background: "var(--muted)" }} />
-                  <div className="h-5 w-20 rounded animate-pulse" style={{ background: "var(--muted)" }} />
-                </div>
-                <div className="space-y-4">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="rounded-xl border p-4 animate-pulse" style={{ borderColor: "var(--border)" }}>
-                      <div className="h-4 w-32 rounded mb-2" style={{ background: "var(--muted)" }} />
-                      <div className="h-3 w-full rounded" style={{ background: "var(--muted)" }} />
+              {completeSetItems.length > 0 ? (
+                <div className="lg:col-span-4">
+                  <div className="lg:sticky lg:top-28 space-y-6 lg:space-y-8">
+                    <h3 className="pd-headline text-xl sm:text-2xl font-black uppercase tracking-tighter text-[#1a1c1d]">
+                      Complete the look
+                    </h3>
+                    <div className="space-y-6">
+                      {completeSetItems.map((p) => {
+                        const img = firstProductImageUrl(p);
+                        const pMin = getMinPriceForProduct(p);
+                        return (
+                          <Link key={p.id} to={`/product/${p.id}`} className="flex items-center gap-4 group">
+                            <div className="w-20 h-20 bg-[#f3f3f5] rounded-xl overflow-hidden shrink-0 border border-black/5">
+                              {img ? (
+                                <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" />
+                              ) : null}
+                            </div>
+                            <div className="flex-grow min-w-0">
+                              <h4 className="text-sm font-bold uppercase tracking-tight text-[#1a1c1d] group-hover:underline truncate">
+                                {p.name}
+                              </h4>
+                              <p className="text-sm text-[#474747]">
+                                {pMin != null ? `₹${pMin.toLocaleString("en-IN")}` : "—"}
+                              </p>
+                            </div>
+                            <span className="text-2xl text-[#1a1c1d] leading-none font-light" aria-hidden>
+                              +
+                            </span>
+                          </Link>
+                        );
+                      })}
+                      {completeSetTotal != null ? (
+                        <div className="pt-6 border-t border-black/10">
+                          <div className="flex justify-between items-center mb-4">
+                            <span className="text-xs uppercase font-bold tracking-widest text-[#474747]">
+                              Pairing total
+                            </span>
+                            <span className="text-xl pd-headline font-black text-[#1a1c1d]">
+                              ₹{completeSetTotal.toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                          <a
+                            href="#product-recommendations"
+                            className="block w-full bg-[#d4d4d4] text-[#1a1c1d] py-4 rounded-full font-bold uppercase tracking-widest text-[10px] sm:text-xs text-center hover:bg-black hover:text-white transition-colors"
+                          >
+                            Browse recommendations
+                          </a>
+                        </div>
+                      ) : null}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-center gap-4 mb-6">
-                  <div className="flex items-center gap-2">
-                    <StarRating value={reviewsData.averageRating} readonly size="lg" />
-                    <span className="text-lg font-bold" style={{ color: "var(--foreground)" }}>
-                      {reviewsData.averageRating > 0 ? reviewsData.averageRating.toFixed(1) : "—"}
+              ) : null}
+            </div>
+
+            <section
+              id="product-reviews"
+              className="mt-16 lg:mt-20 px-4 sm:px-6 lg:px-8 scroll-mt-28"
+              aria-labelledby="reviews-heading"
+            >
+              <h2 id="reviews-heading" className="pd-headline text-2xl sm:text-3xl font-black uppercase tracking-tighter text-[#1a1c1d] mb-8">
+                Reviews
+              </h2>
+
+              {reviewsLoading ? (
+                <div className="rounded-2xl border p-6" style={{ borderColor: "var(--border)", background: "var(--background)" }}>
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="h-8 w-24 rounded-lg animate-pulse" style={{ background: "var(--muted)" }} />
+                    <div className="h-5 w-20 rounded animate-pulse" style={{ background: "var(--muted)" }} />
+                  </div>
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="rounded-xl border p-4 animate-pulse" style={{ borderColor: "var(--border)" }}>
+                        <div className="h-4 w-32 rounded mb-2" style={{ background: "var(--muted)" }} />
+                        <div className="h-3 w-full rounded" style={{ background: "var(--muted)" }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-4 mb-6">
+                    <div className="flex items-center gap-2">
+                      <StarRating value={reviewsData.averageRating} readonly size="lg" />
+                      <span className="text-lg font-bold" style={{ color: "var(--foreground)" }}>
+                        {reviewsData.averageRating > 0 ? reviewsData.averageRating.toFixed(1) : "—"}
+                      </span>
+                    </div>
+                    <span className="text-sm text-muted">
+                      {reviewsData.totalReviews === 0
+                        ? "No reviews yet"
+                        : `${reviewsData.totalReviews} ${reviewsData.totalReviews === 1 ? "review" : "reviews"}`}
                     </span>
                   </div>
-                  <span className="text-sm text-muted">
-                    {reviewsData.totalReviews === 0
-                      ? "No reviews yet"
-                      : `${reviewsData.totalReviews} ${reviewsData.totalReviews === 1 ? "review" : "reviews"}`}
-                  </span>
-                </div>
 
-                {reviewsData.reviews.length === 0 ? (
-                  <div
-                    className="rounded-2xl border-2 border-dashed p-8 m-4 text-center"
-                    style={{ borderColor: "var(--border)", background: "var(--secondary)" }}
-                  >
-                    <p className="text-sm text-muted">
-                      No reviews yet. Be the first to share your experience!
-                    </p>
-                  </div>
-                ) : (
-                  <ul className="space-y-4 mb-8">
-                    {reviewsData.reviews.map((rev) => (
-                      <li
-                        key={rev.id}
-                        className="rounded-xl border p-4 transition-shadow"
-                        style={{ borderColor: "var(--border)", background: "var(--background)", boxShadow: "var(--shadow-soft)" }}
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                          <span className="font-semibold" style={{ color: "var(--foreground)" }}>
-                            {rev.userName || "Anonymous"}
-                          </span>
-                          <StarRating value={rev.rating} readonly size="sm" />
-                        </div>
-                        {rev.comment ? (
-                          <p className="text-sm mt-2 leading-relaxed" style={{ color: "var(--foreground)" }}>
-                            {rev.comment}
-                          </p>
-                        ) : null}
-                        <p className="text-xs mt-2 text-muted">
-                          {typeof rev.createdAt === "string"
-                            ? new Date(rev.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-                            : ""}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {/* Add review: show form if eligible, else friendly message */}
-                <div
-                  className="rounded-2xl border p-6"
-                  style={{ borderColor: "var(--border)", background: "var(--secondary)" }}
-                >
-                  {!isAuthenticated ? (
-                    <p className="text-sm text-muted">
-                      <button
-                        type="button"
-                        onClick={() => navigate("/login", { state: { from: `/product/${product?.id}` } })}
-                        className="font-semibold underline hover:no-underline"
-                        style={{ color: "var(--primary)" }}
-                      >
-                        Log in
-                      </button>{" "}
-                      to leave a review.
-                    </p>
-                  ) : eligibilityLoading ? (
-                    <div className="h-10 w-48 rounded animate-pulse" style={{ background: "var(--muted)" }} />
-                  ) : eligibility?.existingReview ? (
-                    <p className="text-sm text-muted">
-                      You&apos;ve already reviewed this product. Thank you!
-                    </p>
-                  ) : eligibility?.canReview ? (
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-sm font-semibold mb-2" style={{ color: "var(--foreground)" }}>
-                          Your rating
-                        </p>
-                        <StarRating value={reviewRating} onChange={setReviewRating} size="lg" />
-                      </div>
-                      <div>
-                        <label htmlFor="review-comment" className="text-sm font-semibold block mb-2" style={{ color: "var(--foreground)" }}>
-                          Comment (optional)
-                        </label>
-                        <textarea
-                          id="review-comment"
-                          value={reviewComment}
-                          onChange={(e) => setReviewComment(e.target.value)}
-                          placeholder="Share your experience..."
-                          rows={3}
-                          className="w-full rounded-xl border px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2"
-                          style={{ borderColor: "var(--border)", background: "var(--background)" }}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleSubmitReview}
-                        disabled={submitReviewLoading || reviewRating < 1}
-                        className="px-6 py-2.5 rounded-xl font-semibold transition-all disabled:opacity-60 btn-primary-brand"
-                        style={{ borderRadius: "var(--radius-lg)" }}
-                      >
-                        {submitReviewLoading ? "Submitting…" : "Submit review"}
-                      </button>
+                  {reviewsData.reviews.length === 0 ? (
+                    <div
+                      className="rounded-2xl border-2 border-dashed p-8 m-4 text-center"
+                      style={{ borderColor: "var(--border)", background: "var(--secondary)" }}
+                    >
+                      <p className="text-sm text-muted">No reviews yet. Be the first to share your experience!</p>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted">
-                      Purchase this product to leave a review.
-                    </p>
+                    <ul className="space-y-4 mb-8">
+                      {reviewsData.reviews.map((rev) => (
+                        <li
+                          key={rev.id}
+                          className="rounded-xl border p-4 transition-shadow"
+                          style={{
+                            borderColor: "var(--border)",
+                            background: "var(--background)",
+                            boxShadow: "var(--shadow-soft)",
+                          }}
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <span className="font-semibold" style={{ color: "var(--foreground)" }}>
+                              {rev.userName || "Anonymous"}
+                            </span>
+                            <StarRating value={rev.rating} readonly size="sm" />
+                          </div>
+                          {rev.comment ? (
+                            <p className="text-sm mt-2 leading-relaxed" style={{ color: "var(--foreground)" }}>
+                              {rev.comment}
+                            </p>
+                          ) : null}
+                          <p className="text-xs mt-2 text-muted">
+                            {typeof rev.createdAt === "string"
+                              ? new Date(rev.createdAt).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })
+                              : ""}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
                   )}
-                </div>
-              </>
-            )}
-          </section>
 
-          {/* Similar Products Section */}
-          {similarProducts.length > 0 && (
-            <section className="mt-16 px-4 sm:px-6 lg:px-8">
-              <h2 className="text-xl sm:text-xl font-extrabold mb-6" style={{ color: "oklch(20% .02 340)" }}>
-                Similar Products
-              </h2>
-              {similarProducts.length > 0 && (
+                  <div
+                    className="rounded-2xl border p-6"
+                    style={{ borderColor: "var(--border)", background: "var(--secondary)" }}
+                  >
+                    {!isAuthenticated ? (
+                      <p className="text-sm text-muted">
+                        <button
+                          type="button"
+                          onClick={() => navigate("/login", { state: { from: `/product/${product?.id}` } })}
+                          className="font-semibold underline hover:no-underline"
+                          style={{ color: "var(--primary)" }}
+                        >
+                          Log in
+                        </button>{" "}
+                        to leave a review.
+                      </p>
+                    ) : eligibilityLoading ? (
+                      <div className="h-10 w-48 rounded animate-pulse" style={{ background: "var(--muted)" }} />
+                    ) : eligibility?.existingReview ? (
+                      <p className="text-sm text-muted">You&apos;ve already reviewed this product. Thank you!</p>
+                    ) : eligibility?.canReview ? (
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-sm font-semibold mb-2" style={{ color: "var(--foreground)" }}>
+                            Your rating
+                          </p>
+                          <StarRating value={reviewRating} onChange={setReviewRating} size="lg" />
+                        </div>
+                        <div>
+                          <label htmlFor="review-comment" className="text-sm font-semibold block mb-2" style={{ color: "var(--foreground)" }}>
+                            Comment (optional)
+                          </label>
+                          <textarea
+                            id="review-comment"
+                            value={reviewComment}
+                            onChange={(e) => setReviewComment(e.target.value)}
+                            placeholder="Share your experience..."
+                            rows={3}
+                            className="w-full rounded-xl border px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2"
+                            style={{ borderColor: "var(--border)", background: "var(--background)" }}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleSubmitReview}
+                          disabled={submitReviewLoading || reviewRating < 1}
+                          className="px-6 py-2.5 rounded-xl font-semibold transition-all disabled:opacity-60 btn-primary-brand"
+                          style={{ borderRadius: "var(--radius-lg)" }}
+                        >
+                          {submitReviewLoading ? "Submitting…" : "Submit review"}
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted">Purchase this product to leave a review.</p>
+                    )}
+                  </div>
+                </>
+              )}
+            </section>
+
+            {similarProducts.length > 0 ? (
+              <section className="mt-16 px-4 sm:px-6 lg:px-8">
+                <h2 className="pd-headline text-xl sm:text-2xl font-black uppercase tracking-tighter text-[#1a1c1d] mb-6">
+                  Similar products
+                </h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
                   {similarProducts.map((similarProduct) => (
                     <ProductCard key={similarProduct.id} product={similarProduct} />
                   ))}
                 </div>
-              )}
-            </section>
-          )}
+              </section>
+            ) : null}
 
-          {/* Recently Viewed */}
-          {recentIds.length > 0 && (
-            <ProductCarouselSection
-              title="Recently Viewed"
-              productIds={recentIds}
-              excludeProductId={product?.id}
-            />
-          )}
+            {recentIds.length > 0 ? (
+              <ProductCarouselSection
+                title="Recently Viewed"
+                productIds={recentIds}
+                excludeProductId={product?.id}
+              />
+            ) : null}
 
-          {/* Recommended for You */}
-          <RecommendationCarousel
-            products={recommendedProducts}
-            isLoading={loadingRecommendations}
-            title="Recommended for You"
-          />
-        </div>
+            <div id="product-recommendations" className="scroll-mt-28">
+              <RecommendationCarousel
+                products={recommendedProducts}
+                isLoading={loadingRecommendations}
+                title="Recommended for you"
+              />
+            </div>
+          </div>
 
-        {/* Mobile sticky add-to-cart */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50" aria-label="Sticky add to cart">
-          <div
-            className="border-t"
-            style={{
-              backgroundColor: "var(--background)",
-              borderColor: "var(--border)",
-              boxShadow: "0 -8px 24px rgba(0,0,0,0.06)",
-            }}
-          >
-            <div className="px-4 py-3 flex items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-semibold" style={{ color: "var(--foreground-muted)" }}>
-                  {outOfStock ? "Out of stock" : stickyCanAdd ? "Ready to add" : "Select options"}
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 pb-[env(safe-area-inset-bottom)]" aria-label="Sticky add to cart">
+            <div className="border-t border-black/10 bg-[#f9f9fb]/95 backdrop-blur-md shadow-[0_-8px_32px_rgba(0,0,0,0.08)]">
+              <div className="px-4 py-3 flex items-center gap-3 max-w-7xl mx-auto">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#474747]">
+                    {outOfStock ? "Out of stock" : stickyCanAdd ? "Ready to add" : "Select options"}
+                  </div>
+                  <div className="text-base font-black truncate pd-headline text-[#1a1c1d]">
+                    {outOfStock ? "—" : stickyPriceText}
+                  </div>
                 </div>
-                <div
-                  className="text-base font-extrabold truncate"
-                  style={{ color: "var(--foreground)" }}
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  disabled={!stickyCanAdd}
+                  className="min-w-[148px] px-5 py-3.5 rounded-full font-bold uppercase tracking-wider text-xs bg-black text-white transition-transform active:scale-[0.98] disabled:opacity-45 disabled:cursor-not-allowed"
                 >
-                  {outOfStock ? "—" : stickyPriceText}
-                </div>
+                  {outOfStock ? "Out of stock" : "Add to cart"}
+                </button>
               </div>
-              <button
-                onClick={handleAddToCart}
-                disabled={!stickyCanAdd}
-                className="min-w-[150px] px-5 py-3 rounded-2xl font-bold transition-transform duration-200 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: "oklch(55% .18 145)", color: "white" }}
-              >
-                {outOfStock ? "Out of stock" : "Add to cart"}
-              </button>
             </div>
           </div>
         </div>
       </div>
-    </div>
     </>
   );
 }

@@ -229,9 +229,10 @@ function ProductCard({ product, compact = false }) {
               disabled={outOfStock || isAdding}
               className="absolute bottom-3 right-3 z-20 rounded-full h-9 w-9 flex items-center justify-center shadow-lg transition-all duration-300 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed group-hover:opacity-100 opacity-0 translate-y-2 group-hover:translate-y-0"
               style={{
-                backgroundColor: outOfStock ? "var(--accent)" : "var(--cta-yellow)",
-                color: "var(--btn-primary-fg)",
-                border: "1px solid rgba(0,0,0,0.06)",
+                background: outOfStock ? "var(--muted)" : "var(--btn-primary-bg)",
+                color: outOfStock ? "var(--foreground-muted)" : "var(--btn-primary-fg)",
+                border: "none",
+                boxShadow: outOfStock ? "none" : "var(--shadow-soft)",
               }}
             >
               {isAdding ? (
@@ -313,10 +314,25 @@ function ProductCard({ product, compact = false }) {
             {badges.map((b) => {
               const style =
                 b.tone === "fresh"
-                  ? { backgroundColor: "rgba(76,175,80,0.16)", color: "var(--accent)", border: "1px solid rgba(76,175,80,0.25)" }
+                  ? {
+                      backgroundColor: "var(--green-bg-soft)",
+                      color: "var(--accent)",
+                      border: "1px solid var(--separator-subtle)",
+                      boxShadow: "0 8px 24px -8px rgba(26,28,29,0.08)",
+                    }
                   : b.tone === "bestseller"
-                    ? { backgroundColor: "rgba(255,213,128,0.30)", color: "var(--primary)", border: "1px solid rgba(255,213,128,0.40)" }
-                    : { backgroundColor: "rgba(107,62,38,0.82)", color: "#F5E6D3", border: "1px solid rgba(255,213,128,0.30)" };
+                    ? {
+                        backgroundColor: "var(--secondary)",
+                        color: "var(--foreground)",
+                        border: "1px solid var(--separator-subtle)",
+                        boxShadow: "0 8px 24px -8px rgba(26,28,29,0.06)",
+                      }
+                    : {
+                        backgroundColor: "var(--primary)",
+                        color: "var(--primary-foreground)",
+                        border: "1px solid var(--separator-subtle)",
+                        boxShadow: "0 8px 24px -8px rgba(26,28,29,0.12)",
+                      };
 
               return (
                 <span
@@ -388,20 +404,18 @@ function ProductCard({ product, compact = false }) {
           } ${outOfStock ? "opacity-60 cursor-not-allowed" : ""}`}
           style={{
             borderRadius: "var(--radius-lg)",
-            backgroundColor: outOfStock ? "var(--accent)" : "var(--accent)",
-            color: "white",
-            boxShadow: "var(--shadow-soft)",
-            border: "1px solid rgba(0,0,0,0.08)",
+            background: outOfStock ? "var(--muted)" : "var(--btn-primary-bg)",
+            color: outOfStock ? "var(--foreground-muted)" : "var(--btn-primary-fg)",
+            boxShadow: outOfStock ? "none" : "var(--shadow-soft)",
+            border: "none",
           }}
           onMouseEnter={(e) => {
             if (outOfStock || isAdding) return;
-            e.currentTarget.style.backgroundColor = "var(--cta-yellow)";
-            e.currentTarget.style.color = "#1a1a1a";
+            e.currentTarget.style.filter = "brightness(1.08)";
           }}
           onMouseLeave={(e) => {
             if (outOfStock || isAdding) return;
-            e.currentTarget.style.backgroundColor = "var(--accent)";
-            e.currentTarget.style.color = "white";
+            e.currentTarget.style.filter = "none";
           }}
         >
           {isAdding ? (
