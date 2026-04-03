@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useUserAuth } from "../context/UserAuthContext";
 import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
 import { API } from "../api";
 
 export default function Login() {
@@ -12,6 +13,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const { login } = useUserAuth();
   const { mergeCart } = useCart();
+  const { mergeWishlist } = useWishlist();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -40,6 +42,7 @@ export default function Login() {
         return;
       }
       await mergeCart();
+      await mergeWishlist();
       navigate(getSafeReturnPath(), { replace: true });
     } else {
       setError(result.error || "Login failed");
@@ -59,7 +62,7 @@ export default function Login() {
       >
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <img src="/logo.png" alt="SK Fruits" className="h-14 w-auto" />
+            <img src="/logo.png" alt="shoposphere" className="h-14 w-auto" />
           </div>
           <h1 className="font-display text-xl md:text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>
             Welcome back

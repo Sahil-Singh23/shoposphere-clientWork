@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -56,8 +57,8 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://skfruits.com",
-      "https://skfruits.onrender.com",
+      "https://shoposphere.com",
+      "https://shoposphere.onrender.com",
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "X-Cart-Session-Id"],
@@ -76,6 +77,7 @@ app.set("headersTimeout", 66000); // 66 seconds (must be > keepAliveTimeout)
 // CORS configuration
 
 app.use(express.json());
+app.use(cookieParser());
 
 // Configure session middleware for OAuth
 app.use(session({

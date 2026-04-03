@@ -42,6 +42,17 @@ import MyOrders from "./pages/MyOrders";
 import OrderDetails from "./pages/OrderDetails";
 import Wishlist from "./pages/Wishlist";
 import DriverDashboard from "./pages/DriverDashboard";
+import { useUserAuth } from "./context/UserAuthContext";
+
+function CheckoutRouteGuard() {
+  const { isAuthenticated, loading } = useUserAuth();
+
+  if (loading) {
+    return null;
+  }
+
+  return isAuthenticated ? <Checkout /> : <Navigate to="/signup" replace />;
+}
 
 function PublicLayout() {
   return (
@@ -58,7 +69,7 @@ function PublicLayout() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/cart" element={<Cart />} />
-          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/checkout" element={<CheckoutRouteGuard />} />
           <Route path="/order-success" element={<OrderSuccess />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />

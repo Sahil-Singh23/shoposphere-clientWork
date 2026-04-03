@@ -20,19 +20,7 @@ const AUTH_COOKIE_OPTIONS = {
 };
 
 function getCookieValue(req, name) {
-  const cookieHeader = req.headers.cookie;
-  if (!cookieHeader) return null;
-
-  const cookies = cookieHeader.split(";");
-  for (const cookie of cookies) {
-    const [rawKey, ...rawValueParts] = cookie.split("=");
-    const key = rawKey?.trim();
-    if (key !== name) continue;
-    const value = rawValueParts.join("=").trim();
-    return value ? decodeURIComponent(value) : null;
-  }
-
-  return null;
+  return req.cookies?.[name] || null;
 }
 
 function getAuthToken(req) {

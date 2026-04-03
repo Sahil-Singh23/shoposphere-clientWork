@@ -18,14 +18,13 @@ export default function Footer() {
           <div className="flex items-start gap-3">
             <img
               src="/logo.png"
-              alt="SK Fruits — FreshFruit"
+              alt="shoposphere"
               className="h-12 w-auto"
             />
             <div className="flex flex-col">
               <h3 className="font-display text-sm font-extrabold tracking-wide mb-1 text-design-foreground">
-                SK Fruits
+                shoposphere
               </h3>
-              <p className="text-xs text-design-muted mb-1">FreshFruit</p>
               {/* Instagram Link */}
               <a
                 href=""
@@ -95,7 +94,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-design pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-design-foreground">
-            © {new Date().getFullYear()} SK Fruits (FreshFruit). All rights reserved.
+            © {new Date().getFullYear()} shoposphere. All rights reserved.
           </p>
 
           <div className="flex items-center gap-2 text-sm text-design-foreground">

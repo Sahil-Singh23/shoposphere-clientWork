@@ -1,10 +1,9 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useToast } from "./ToastContext";
-import { useUserAuth } from "./UserAuthContext";
 import { API } from "../api";
 
 const CartContext = createContext();
-export const CART_SESSION_KEY = "skfruits_cart_session";
+export const CART_SESSION_KEY = "shoposphere_cart_session";
 
 function getStoredSessionId() {
   try {
@@ -42,7 +41,7 @@ export function CartProvider({ children }) {
     const newSessionId = res.headers.get("X-Cart-Session-Id") || data.sessionId;
     if (newSessionId) setStoredSessionId(newSessionId);
     setCartItems(Array.isArray(data.items) ? data.items : []);
-  }, [getAuthHeaders]);
+  }, []);
 
   useEffect(() => {
     fetchCart().finally(() => setIsLoaded(true));
@@ -177,7 +176,7 @@ export function CartProvider({ children }) {
     } catch (err) {
       console.error("Cart merge error:", err);
     }
-  }, [getAuthHeaders]);
+  }, []);
 
   return (
     <CartContext.Provider

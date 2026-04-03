@@ -47,7 +47,7 @@ export default function AdminLayout() {
             </div>
             <div className="min-w-0">
               <div className="font-display text-sm font-semibold truncate" style={{ color: "var(--foreground)" }}>
-                SK Fruits
+                shoposphere
               </div>
               <div className="text-xs truncate max-w-[14rem] text-muted">{user?.email}</div>
             </div>

@@ -5,6 +5,36 @@ import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 
+function parseWeightOptions(product) {
+  if (!product?.weightOptions) return [];
+  if (Array.isArray(product.weightOptions)) return product.weightOptions;
+  try {
+    const parsed = JSON.parse(product.weightOptions);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function getAvailableStock(product) {
+  if (!product) return 0;
+
+  if (Array.isArray(product.variants) && product.variants.length > 0) {
+    return product.variants.reduce((sum, v) => sum + Math.max(0, Number(v?.stock ?? 0)), 0);
+  }
+
+  if (Array.isArray(product.sizes) && product.sizes.length > 0) {
+    return product.sizes.reduce((sum, s) => sum + Math.max(0, Number(s?.stock ?? 0)), 0);
+  }
+
+  const weightOptions = parseWeightOptions(product);
+  if (weightOptions.length > 0) {
+    return weightOptions.reduce((sum, w) => sum + Math.max(0, Number(w?.stock ?? 0)), 0);
+  }
+
+  return Math.max(0, Number(product.stock ?? 0));
+}
+
 function WishlistCardSkeleton() {
   return (
     <div
@@ -23,7 +53,7 @@ function WishlistCardSkeleton() {
 }
 
 export default function Wishlist() {
-  const { isAuthenticated, loading: authLoading, getAuthHeaders } = useUserAuth();
+  const { isAuthenticated, loading: authLoading } = useUserAuth();
   const { wishlistItems, loading: wishlistLoading, removeFromWishlist, refreshWishlist } = useWishlist();
   const { addToCart } = useCart();
   const toast = useToast();
@@ -31,12 +61,8 @@ export default function Wishlist() {
   const [removingId, setRemovingId] = useState(null);
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      navigate("/login", { replace: true });
-      return;
-    }
-    if (isAuthenticated) refreshWishlist();
-  }, [authLoading, isAuthenticated, navigate, refreshWishlist]);
+    if (!authLoading) refreshWishlist();
+  }, [authLoading, refreshWishlist]);
 
   const handleRemove = async (productId) => {
     setRemovingId(productId);
@@ -47,8 +73,8 @@ export default function Wishlist() {
   const handleAddToCart = (item) => {
     const product = item.product;
     if (!product) return;
-    const stock = typeof product.stock === "number" ? product.stock : 0;
-    if (stock <= 0) {
+    const availableStock = getAvailableStock(product);
+    if (availableStock <= 0) {
       toast.error("This product is out of stock");
       return;
     }
@@ -61,14 +87,21 @@ export default function Wishlist() {
       toast.error("This product has no sizes available");
       return;
     }
-    if (product.sizes.length === 1) {
-      addToCart(product, product.sizes[0], 1);
+
+    const inStockSizes = product.sizes.filter((s) => Number(s?.stock ?? 0) > 0);
+    if (inStockSizes.length === 0) {
+      toast.error("This product is out of stock");
+      return;
+    }
+
+    if (inStockSizes.length === 1) {
+      addToCart(product, inStockSizes[0], 1);
     } else {
       navigate(`/product/${product.id}`);
     }
   };
 
-  if (authLoading || (isAuthenticated && wishlistLoading && wishlistItems.length === 0)) {
+  if (authLoading || (wishlistLoading && wishlistItems.length === 0)) {
     return (
       <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8" style={{ background: "var(--background)" }}>
         <div className="max-w-6xl mx-auto">
@@ -83,8 +116,6 @@ export default function Wishlist() {
       </div>
     );
   }
-
-  if (!isAuthenticated) return null;
 
   return (
     <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8" style={{ background: "var(--background)" }}>
@@ -178,7 +209,7 @@ export default function Wishlist() {
               const displayPrice = priceInfo ? priceInfo.selling : null;
               const displayMrp =
                 priceInfo && priceInfo.mrp != null && priceInfo.mrp > displayPrice ? priceInfo.mrp : null;
-              const outOfStock = (typeof product.stock === "number" ? product.stock : 0) <= 0;
+              const outOfStock = getAvailableStock(product) <= 0;
               const isRemoving = removingId === product.id;
 
               return (
@@ -205,7 +236,7 @@ export default function Wishlist() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <img src="/logo.png" alt="SK Fruits" className="w-16 h-16 object-contain opacity-50" />
+                          <img src="/logo.png" alt="shoposphere" className="h-10 w-auto object-contain opacity-50" />
                         </div>
                       )}
                     </div>

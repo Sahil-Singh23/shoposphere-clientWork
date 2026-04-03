@@ -1,6 +1,6 @@
 import { createContext, useContext, useCallback, useState, useEffect } from "react";
 
-const STORAGE_KEY = "skfruits_recently_viewed";
+const STORAGE_KEY = "shoposphere_recently_viewed";
 const MAX_ITEMS = 10;
 
 function loadFromStorage() {

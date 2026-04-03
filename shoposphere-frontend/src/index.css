@@ -477,6 +477,161 @@ a, button, input, textarea, select {
   animation: addSuccessPop 520ms var(--ease-out) both;
 }
 
+/* Toast notifications — aligned with Shoposphere visual language */
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -10px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.app-toast-stack {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  width: min(92vw, 24rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  pointer-events: none;
+}
+
+.app-toast {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card-white) 88%, var(--secondary) 12%);
+  box-shadow: var(--shadow-medium);
+  animation: toastIn 240ms var(--ease-out) both;
+  pointer-events: auto;
+}
+
+.app-toast__glow {
+  position: absolute;
+  inset: 0;
+  opacity: 0.65;
+  pointer-events: none;
+  background: radial-gradient(100% 80% at 0% 0%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 75%);
+}
+
+.app-toast__content {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 0.7rem;
+  padding: 0.8rem 0.85rem;
+}
+
+.app-toast__icon-wrap {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--separator);
+  background: var(--secondary);
+  color: var(--foreground);
+}
+
+.app-toast__icon-svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.app-toast__text-wrap {
+  min-width: 0;
+}
+
+.app-toast__message {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.app-toast__close {
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-top: -0.1rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--foreground-muted);
+  background: transparent;
+}
+
+.app-toast__close svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.app-toast__close:hover {
+  background: var(--secondary);
+  border-color: var(--separator-subtle);
+  color: var(--foreground);
+}
+
+.app-toast__close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--primary);
+}
+
+.app-toast--success {
+  border-color: color-mix(in srgb, var(--green-accent) 20%, var(--border) 80%);
+}
+
+.app-toast--success .app-toast__icon-wrap {
+  background: color-mix(in srgb, var(--green-bg-soft) 76%, white 24%);
+  color: var(--green-accent);
+}
+
+.app-toast--error {
+  border-color: color-mix(in srgb, var(--destructive) 26%, var(--border) 74%);
+}
+
+.app-toast--error .app-toast__icon-wrap {
+  background: color-mix(in srgb, var(--destructive) 10%, white 90%);
+  color: var(--destructive);
+}
+
+.app-toast--warning {
+  border-color: color-mix(in srgb, #b86c00 24%, var(--border) 76%);
+}
+
+.app-toast--warning .app-toast__icon-wrap {
+  background: color-mix(in srgb, #b86c00 12%, white 88%);
+  color: #a36200;
+}
+
+.app-toast--info {
+  border-color: color-mix(in srgb, var(--foreground) 12%, var(--border) 88%);
+}
+
+.app-toast--info .app-toast__icon-wrap {
+  background: var(--secondary);
+  color: var(--foreground);
+}
+
+@media (max-width: 640px) {
+  .app-toast-stack {
+    left: 0.75rem;
+    right: 0.75rem;
+    top: 0.75rem;
+    width: auto;
+  }
+}
+
 /* Product detail — editorial layout (Epilogue + Manrope) */
 .pd-editorial {
   font-family: Manrope, "DM Sans", system-ui, sans-serif;

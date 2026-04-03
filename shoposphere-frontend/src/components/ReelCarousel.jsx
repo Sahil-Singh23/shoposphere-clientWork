@@ -344,7 +344,7 @@ export default function ReelCarousel({ reels }) {
                       />
                     ) : (
                       <div className="text-center z-10">
-                        <img src="/logo.png" alt="Gift Choice Logo" className="w-16 h-16 mx-auto mb-2 object-contain opacity-50 animate-pulse" />
+                        <img src="/logo.png" alt="Gift Choice Logo" className="h-10 w-auto mx-auto mb-2 object-contain opacity-50 animate-pulse" />
                         <div className="text-white/70 text-xs font-semibold">Loading reel...</div>
                       </div>
                     )}
@@ -563,7 +563,7 @@ export default function ReelCarousel({ reels }) {
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-800 via-gray-900 to-black">
                 <div className="text-center px-6 z-10">
-                  <img src="/logo.png" alt="Gift Choice Logo" className="w-16 h-16 mx-auto mb-3 object-contain opacity-50" />
+                  <img src="/logo.png" alt="Gift Choice Logo" className="h-10 w-auto mx-auto mb-3 object-contain opacity-50" />
                   <div className="text-white font-semibold">Reel video missing</div>
                   <div className="text-white/70 text-sm mt-1">Add a reel video URL in Admin</div>
                 </div>

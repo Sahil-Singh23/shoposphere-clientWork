@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useUserAuth } from "../context/UserAuthContext";
 import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
 import { API } from "../api";
 
 const initialForm = { name: "", email: "", password: "", confirmPassword: "" };
@@ -14,6 +15,7 @@ export default function Signup() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { signup } = useUserAuth();
   const { mergeCart } = useCart();
+  const { mergeWishlist } = useWishlist();
   const navigate = useNavigate();
 
   const update = (field, value) => {
@@ -55,6 +57,7 @@ export default function Signup() {
 
     if (result.success) {
       await mergeCart();
+      await mergeWishlist();
       navigate("/", { replace: true });
     } else {
       setError(result.error || "Signup failed");
@@ -74,12 +77,12 @@ export default function Signup() {
       >
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <img src="/logo.png" alt="SK Fruits" className="h-14 w-auto" />
+            <img src="/logo.png" alt="shoposphere" className="h-14 w-auto" />
           </div>
           <h1 className="font-display text-xl md:text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>
             Create account
           </h1>
-          <p style={{ color: "var(--text-muted)" }}>Join SK Fruits for a fresher experience</p>
+          <p style={{ color: "var(--text-muted)" }}>Join shoposphere for a fresher experience</p>
         </div>
 
         {error && (

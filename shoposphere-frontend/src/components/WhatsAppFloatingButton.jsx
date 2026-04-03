@@ -5,8 +5,8 @@ export default function WhatsAppFloatingButton() {
     let priceText = "";
 
     try {
-      productName = localStorage.getItem("skfruits_last_whatsapp_product") || "";
-      priceText = localStorage.getItem("skfruits_last_whatsapp_price") || "";
+      productName = localStorage.getItem("shoposphere_last_whatsapp_product") || "";
+      priceText = localStorage.getItem("shoposphere_last_whatsapp_price") || "";
     } catch {
       // ignore
     }

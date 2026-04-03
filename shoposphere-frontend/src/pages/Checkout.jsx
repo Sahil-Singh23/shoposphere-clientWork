@@ -84,6 +84,7 @@ export default function Checkout() {
   const [saveAddressForNextTime, setSaveAddressForNextTime] = useState(true);
   const paymentInProgressRef = useRef(false);
   const usedManualFormRef = useRef(false);
+  const guestToastShownRef = useRef(false);
 
   useEffect(() => {
     refreshCart?.();
@@ -149,6 +150,12 @@ export default function Checkout() {
       navigate("/cart", { replace: true });
     }
   }, [isLoaded, cartItems.length, navigate, toast]);
+
+  useEffect(() => {
+    if (!isLoaded || cartItems.length === 0 || isAuthenticated || guestToastShownRef.current) return;
+    toast.info("You are checking out as guest. Log in for saved addresses.");
+    guestToastShownRef.current = true;
+  }, [isLoaded, cartItems.length, isAuthenticated, toast]);
 
   const updateField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -347,7 +354,7 @@ export default function Checkout() {
         key: keyId,
         amount: String(amount),
         currency: "INR",
-        name: "SK Fruits",
+        name: "shoposphere",
         description: "Order payment",
         order_id: razorpayOrderId,
         method: {
@@ -906,7 +913,7 @@ export default function Checkout() {
                       {item.productImage ? (
                         <img src={item.productImage} alt={item.productName} className="w-full h-full object-cover" />
                       ) : (
-                        <img src="/logo.png" alt="" className="w-8 h-8 opacity-50" />
+                        <img src="/logo.png" alt="" className="h-5 w-auto opacity-50" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">

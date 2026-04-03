@@ -4,33 +4,60 @@ function typeStyles(type) {
   switch (type) {
     case "success":
       return {
-        border: "border-emerald-200",
-        bg: "bg-white",
-        dot: "bg-emerald-500",
-        text: "text-gray-900",
+        className: "app-toast--success",
+        label: "Success",
       };
     case "error":
       return {
-        border: "border-red-200",
-        bg: "bg-white",
-        dot: "bg-red-500",
-        text: "text-gray-900",
+        className: "app-toast--error",
+        label: "Error",
       };
     case "warning":
       return {
-        border: "border-amber-200",
-        bg: "bg-white",
-        dot: "bg-amber-500",
-        text: "text-gray-900",
+        className: "app-toast--warning",
+        label: "Warning",
       };
     default:
       return {
-        border: "border-gray-200",
-        bg: "bg-white",
-        dot: "bg-gray-500",
-        text: "text-gray-900",
+        className: "app-toast--info",
+        label: "Info",
       };
   }
+}
+
+function ToastIcon({ type }) {
+  if (type === "success") {
+    return (
+      <svg className="app-toast__icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M20 7L10 17l-6-6" />
+      </svg>
+    );
+  }
+
+  if (type === "error") {
+    return (
+      <svg className="app-toast__icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M12 9v4m0 4h.01" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+      </svg>
+    );
+  }
+
+  if (type === "warning") {
+    return (
+      <svg className="app-toast__icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M12 8v4m0 4h.01" />
+        <circle cx="12" cy="12" r="9" strokeWidth="2.2" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg className="app-toast__icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" strokeWidth="2.2" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M12 10v5m0-8h.01" />
+    </svg>
+  );
 }
 
 export default function ToastViewport() {
@@ -38,32 +65,36 @@ export default function ToastViewport() {
   if (!toasts.length) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-[9999] w-[92vw] max-w-sm space-y-3">
-      {toasts.map((t) => {
+    <div className="app-toast-stack" role="region" aria-label="Notifications">
+      {toasts.map((t, index) => {
         const s = typeStyles(t.type);
         return (
           <div
             key={t.id}
             role="status"
             aria-live="polite"
-            className={[
-              "rounded-2xl border shadow-lg px-4 py-3 backdrop-blur",
-              s.border,
-              s.bg,
-            ].join(" ")}
+            className={["app-toast", s.className].join(" ")}
+            style={{ animationDelay: `${Math.min(index * 50, 180)}ms` }}
           >
-            <div className="flex items-start gap-3">
-              <div className={["mt-1 h-2.5 w-2.5 rounded-full", s.dot].join(" ")} />
-              <div className={["text-sm font-semibold leading-snug", s.text].join(" ")}>
-                {t.message}
+            <div className="app-toast__glow" aria-hidden="true" />
+            <div className="app-toast__content">
+              <div className="app-toast__icon-wrap">
+                <ToastIcon type={t.type} />
               </div>
+
+              <div className="app-toast__text-wrap">
+                <p className="app-toast__message">{t.message}</p>
+              </div>
+
               <button
                 type="button"
                 onClick={() => remove(t.id)}
-                className="ml-auto text-gray-500 hover:text-gray-900 font-bold px-2 focus:outline-none focus:ring-2 focus:ring-pink-500/40 rounded-lg"
+                className="app-toast__close"
                 aria-label="Dismiss notification"
               >
-                ×
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 6l12 12M6 18L18 6" />
+                </svg>
               </button>
             </div>
           </div>

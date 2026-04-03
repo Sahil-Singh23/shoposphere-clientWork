@@ -47,7 +47,7 @@ export default function MessageList({ messages, onUpdate }) {
   if (messages.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-md p-12 text-center border border-gray-200">
-        <img src="/logo.png" alt="Gift Choice Logo" className="w-20 h-20 mx-auto mb-4 object-contain opacity-50" />
+        <img src="/logo.png" alt="Gift Choice Logo" className="h-12 w-auto mx-auto mb-4 object-contain opacity-50" />
         <p className="text-gray-600 font-medium">No messages yet.</p>
       </div>
     );
@@ -135,7 +135,7 @@ export default function MessageList({ messages, onUpdate }) {
       )}
       emptyState={
         <>
-          <img src="/logo.png" alt="Gift Choice Logo" className="w-20 h-20 mx-auto mb-4 object-contain opacity-50" />
+          <img src="/logo.png" alt="Gift Choice Logo" className="h-12 w-auto mx-auto mb-4 object-contain opacity-50" />
           <p className="text-gray-600 font-medium">No messages yet.</p>
         </>
       }
