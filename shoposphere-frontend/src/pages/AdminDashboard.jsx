@@ -51,16 +51,6 @@ export default function AdminDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("adminToken");
-      
-      if (!token) {
-        toast.error("Please login to continue");
-        navigate("/admin/login");
-        return;
-      }
-      
-      const headers = { Authorization: `Bearer ${token}` };
-
       if (activeTab === "products") {
         const [productsRes, categoriesRes] = await Promise.all([
           fetch(`${API}/products`), // Public endpoint, no auth needed
@@ -88,7 +78,7 @@ export default function AdminDashboard() {
           setCategories(data);
         }
       } else if (activeTab === "messages") {
-        const res = await fetch(`${API}/contact`, { headers });
+        const res = await fetch(`${API}/contact`, { credentials: "include" });
         if (res.ok) {
           const data = await res.json();
           setMessages(data);
@@ -97,7 +87,7 @@ export default function AdminDashboard() {
           logout();
         }
       } else if (activeTab === "reels") {
-        const res = await fetch(`${API}/reels/all`, { headers });
+        const res = await fetch(`${API}/reels/all`, { credentials: "include" });
         if (res.ok) {
           const data = await res.json();
           setReels(data);
@@ -106,7 +96,7 @@ export default function AdminDashboard() {
           logout();
         }
       } else if (activeTab === "banners") {
-        const res = await fetch(`${API}/banners/all`, { headers });
+        const res = await fetch(`${API}/banners/all`, { credentials: "include" });
         if (res.ok) {
           const data = await res.json();
           setBanners(data);

@@ -174,7 +174,6 @@ export default function ReelForm({ reel, onSave, onCancel }) {
     setLoading(true);
     isSubmittingRef.current = true;
     try {
-      const token = localStorage.getItem("adminToken");
       const url = reel
         ? `${API}/reels/${reel.id}`
         : `${API}/reels`;
@@ -217,9 +216,7 @@ export default function ReelForm({ reel, onSave, onCancel }) {
 
       const res = await fetch(url, {
         method,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
         body: formDataToSend,
       });
 

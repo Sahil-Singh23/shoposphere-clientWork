@@ -8,7 +8,7 @@ import DriverInfo from "../components/DriverInfo";
 export default function OrderSuccess() {
   const [searchParams] = useSearchParams();
   const { clearCart } = useCart();
-  const { isAuthenticated, getAuthHeaders } = useUserAuth();
+  const { isAuthenticated } = useUserAuth();
   const orderId = searchParams.get("orderId") || "";
   const [order, setOrder] = useState(null);
 
@@ -18,13 +18,11 @@ export default function OrderSuccess() {
 
   useEffect(() => {
     if (!orderId || !isAuthenticated) return;
-    const headers = getAuthHeaders();
-    if (!headers?.Authorization) return;
-    fetch(`${API}/orders/${orderId}`, { headers, credentials: "include" })
+    fetch(`${API}/orders/${orderId}`, { credentials: "include" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => setOrder(data))
       .catch(() => setOrder(null));
-  }, [orderId, isAuthenticated, getAuthHeaders]);
+  }, [orderId, isAuthenticated]);
 
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center" style={{ background: "var(--background)" }}>

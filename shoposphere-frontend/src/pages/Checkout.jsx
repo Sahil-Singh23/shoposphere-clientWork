@@ -61,7 +61,7 @@ function validatePincode(value) {
 
 export default function Checkout() {
   const { cartItems, isLoaded, refreshCart } = useCart();
-  const { isAuthenticated, getAuthHeaders } = useUserAuth();
+  const { isAuthenticated } = useUserAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const [form, setForm] = useState(initialForm);
@@ -101,7 +101,7 @@ export default function Checkout() {
     const url = selectedSlotId
       ? `${API}/delivery/checkout-summary?slotId=${selectedSlotId}`
       : `${API}/delivery/checkout-summary`;
-    fetch(url, { headers: { "X-Cart-Session-Id": sessionId } })
+    fetch(url, { headers: { "X-Cart-Session-Id": sessionId }, credentials: "include" })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(res.status === 400 ? "Invalid cart" : "Failed to load"))))
       .then((data) => setDeliverySummary(data))
       .catch((err) => {
@@ -114,7 +114,7 @@ export default function Checkout() {
   const fetchSlots = () => {
     setLoadingSlots(true);
     setSlotsError(false);
-    fetch(`${API}/delivery/slots?days=7`)
+    fetch(`${API}/delivery/slots?days=7`, { credentials: "include" })
       .then((res) => (res.ok ? res.json() : { slots: [] }))
       .then((data) => setDeliverySlots(data.slots || []))
       .catch(() => {
@@ -131,7 +131,7 @@ export default function Checkout() {
   useEffect(() => {
     if (!isAuthenticated) return;
     setLoadingAddresses(true);
-    fetch(`${API}/addresses`, { headers: getAuthHeaders() })
+    fetch(`${API}/addresses`, { credentials: "include" })
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
         const list = Array.isArray(data) ? data : [];
@@ -204,7 +204,8 @@ export default function Checkout() {
     try {
       await fetch(`${API}/addresses/add`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           fullName: details.name,
           phone: details.phone || "",
@@ -267,7 +268,8 @@ export default function Checkout() {
       try {
         const res = await fetch(`${API}/orders/create`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             sessionId,
             customerDetails,
@@ -377,7 +379,8 @@ export default function Checkout() {
           try {
             const verifyRes = await fetch(`${API}/payments/verify`, {
               method: "POST",
-              headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
@@ -432,7 +435,8 @@ export default function Checkout() {
     try {
       const res = await fetch(`${API}/addresses/add`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
       const data = await res.json();

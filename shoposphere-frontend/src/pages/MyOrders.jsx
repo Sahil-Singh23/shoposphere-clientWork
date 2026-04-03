@@ -57,7 +57,7 @@ function formatDate(iso) {
 }
 
 export default function MyOrders() {
-  const { isAuthenticated, loading: authLoading, getAuthHeaders } = useUserAuth();
+  const { isAuthenticated, loading: authLoading } = useUserAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
@@ -70,13 +70,7 @@ export default function MyOrders() {
     }
     if (!isAuthenticated) return;
 
-    const headers = getAuthHeaders();
-    if (!headers.Authorization) {
-      setLoading(false);
-      return;
-    }
-
-    fetch(`${API}/orders/my-orders`, { headers, credentials: "include" })
+    fetch(`${API}/orders/my-orders`, { credentials: "include" })
       .then((res) => {
         if (res.status === 401) {
           navigate("/login", { replace: true });
@@ -92,7 +86,7 @@ export default function MyOrders() {
         setOrders([]);
       })
       .finally(() => setLoading(false));
-  }, [authLoading, isAuthenticated, navigate, getAuthHeaders, toast]);
+  }, [authLoading, isAuthenticated, navigate, toast]);
 
   if (authLoading || (isAuthenticated && loading)) {
     return (

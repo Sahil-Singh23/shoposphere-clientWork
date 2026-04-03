@@ -1,24 +1,8 @@
 import express from "express";
-import jwt from "jsonwebtoken";
 import prisma from "../prisma.js";
+import { requireCustomerAuth } from "../utils/auth.js";
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
-
-function requireCustomerAuth(req, res, next) {
-  const token = req.headers.authorization?.replace(/^Bearer\s+/i, "").trim();
-  if (!token) return res.status(401).json({ error: "Login required" });
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    if (decoded.role === "admin") {
-      return res.status(403).json({ error: "Customer account required" });
-    }
-    req.customerUserId = Number(decoded.userId);
-    next();
-  } catch (e) {
-    return res.status(401).json({ error: "Invalid or expired token" });
-  }
-}
 
 function validateAddressBody(body) {
   const err = {};

@@ -27,14 +27,11 @@ export function CartProvider({ children }) {
   const [cartItems, setCartItems] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const toast = useToast();
-  const { token: userToken, getAuthHeaders } = useUserAuth();
 
   const fetchCart = useCallback(async () => {
     const sessionId = getStoredSessionId();
     const headers = { "Content-Type": "application/json" };
     if (sessionId) headers["X-Cart-Session-Id"] = sessionId;
-    const auth = getAuthHeaders();
-    if (auth.Authorization) headers.Authorization = auth.Authorization;
 
     const res = await fetch(`${API}/cart`, { headers, credentials: "include" });
     const data = await res.json();
@@ -60,8 +57,6 @@ export function CartProvider({ children }) {
     const sessionId = getStoredSessionId();
     const headers = { "Content-Type": "application/json" };
     if (sessionId) headers["X-Cart-Session-Id"] = sessionId;
-    const auth = getAuthHeaders();
-    if (auth.Authorization) headers.Authorization = auth.Authorization;
 
     const productSizeId = selectedSize && selectedSize.id !== 0 ? selectedSize.id : null;
     const body = JSON.stringify({
@@ -99,8 +94,6 @@ export function CartProvider({ children }) {
     const sessionId = getStoredSessionId();
     const headers = {};
     if (sessionId) headers["X-Cart-Session-Id"] = sessionId;
-    const auth = getAuthHeaders();
-    if (auth.Authorization) headers.Authorization = auth.Authorization;
 
     try {
       const res = await fetch(`${API}/cart/items/${itemId}`, {
@@ -124,8 +117,6 @@ export function CartProvider({ children }) {
     const sessionId = getStoredSessionId();
     const headers = { "Content-Type": "application/json" };
     if (sessionId) headers["X-Cart-Session-Id"] = sessionId;
-    const auth = getAuthHeaders();
-    if (auth.Authorization) headers.Authorization = auth.Authorization;
 
     try {
       const res = await fetch(`${API}/cart/items/${itemId}`, {
@@ -152,9 +143,7 @@ export function CartProvider({ children }) {
     const sessionId = getStoredSessionId();
     const headers = {};
     if (sessionId) headers["X-Cart-Session-Id"] = sessionId;
-    const auth = getAuthHeaders();
-    if (auth.Authorization) headers.Authorization = auth.Authorization;
-    if (!sessionId && !auth.Authorization) {
+    if (!sessionId) {
       setCartItems([]);
       return;
     }
@@ -173,9 +162,6 @@ export function CartProvider({ children }) {
   const mergeCart = useCallback(async () => {
     const guestSessionId = getStoredSessionId();
     const headers = { "Content-Type": "application/json" };
-    const auth = getAuthHeaders();
-    if (!auth.Authorization) return;
-    headers.Authorization = auth.Authorization;
     if (guestSessionId) headers["X-Cart-Session-Id"] = guestSessionId;
     try {
       const res = await fetch(`${API}/cart/merge`, {

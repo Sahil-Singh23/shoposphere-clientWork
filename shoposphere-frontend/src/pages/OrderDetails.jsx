@@ -48,7 +48,7 @@ function formatDate(iso) {
 
 export default function OrderDetails() {
   const { id } = useParams();
-  const { isAuthenticated, loading: authLoading, getAuthHeaders } = useUserAuth();
+  const { isAuthenticated, loading: authLoading } = useUserAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const { addToCart } = useCart();
@@ -64,13 +64,7 @@ export default function OrderDetails() {
     }
     if (!isAuthenticated || !id) return;
 
-    const headers = getAuthHeaders();
-    if (!headers.Authorization) {
-      setLoading(false);
-      return;
-    }
-
-    fetch(`${API}/orders/${id}`, { headers, credentials: "include" })
+    fetch(`${API}/orders/${id}`, { credentials: "include" })
       .then((res) => {
         if (res.status === 401) {
           navigate("/login", { replace: true });
@@ -86,7 +80,7 @@ export default function OrderDetails() {
         toast.error("Could not load order");
       })
       .finally(() => setLoading(false));
-  }, [id, authLoading, isAuthenticated, navigate, getAuthHeaders, toast]);
+  }, [id, authLoading, isAuthenticated, navigate, toast]);
 
   const handleCancel = async () => {
     if (!order || cancelling) return;
@@ -94,7 +88,6 @@ export default function OrderDetails() {
     try {
       const res = await fetch(`${API}/orders/${order.id}/cancel`, {
         method: "PATCH",
-        headers: getAuthHeaders(),
         credentials: "include",
       });
       const data = await res.json();

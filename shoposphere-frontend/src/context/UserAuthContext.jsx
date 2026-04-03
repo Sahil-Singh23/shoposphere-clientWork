@@ -1,36 +1,16 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { API } from "../api";
 
-const USER_TOKEN_KEY = "skfruits_user_token";
 const AuthContext = createContext();
-
-function getStoredToken() {
-  try {
-    return localStorage.getItem(USER_TOKEN_KEY) || null;
-  } catch {
-    return null;
-  }
-}
-
-function setStoredToken(token) {
-  try {
-    if (token) localStorage.setItem(USER_TOKEN_KEY, token);
-    else localStorage.removeItem(USER_TOKEN_KEY);
-  } catch (e) {
-    console.warn("Could not persist auth token:", e);
-  }
-}
 
 export function UserAuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUser = useCallback(async (authToken) => {
-    if (!authToken) return null;
+  const fetchUser = useCallback(async () => {
     try {
       const res = await fetch(`${API}/auth/me`, {
-        headers: { Authorization: `Bearer ${authToken}` },
+        credentials: "include",
       });
       if (!res.ok) return null;
       const data = await res.json();
@@ -41,13 +21,7 @@ export function UserAuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    const stored = getStoredToken();
-    if (!stored) {
-      setLoading(false);
-      return;
-    }
-    setToken(stored);
-    fetchUser(stored)
+    fetchUser()
       .then((u) => {
         setUser(u);
       })
@@ -61,6 +35,7 @@ export function UserAuthProvider({ children }) {
         const res = await fetch(`${API}/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ email, password }),
         });
         const data = await res.json();
@@ -69,19 +44,11 @@ export function UserAuthProvider({ children }) {
           return { success: false, error: data.error || data.message || "Login failed" };
         }
 
-        const isAdmin = data.user?.role === "admin" || data.user?.isAdmin;
-        if (isAdmin) {
-          try {
-            localStorage.setItem("adminToken", data.token);
-          } catch (_) {}
+        const u = data.user;
+        setUser(u);
+        if (u?.role === "admin" || u?.isAdmin) {
           return { success: true, redirectToAdmin: true };
         }
-
-        const t = data.token;
-        const u = data.user;
-        setToken(t);
-        setUser(u);
-        setStoredToken(t);
         const isDriver = u?.role === "driver";
         return { success: true, ...(isDriver && { redirectToDriver: true }) };
       } catch (err) {
@@ -98,6 +65,7 @@ export function UserAuthProvider({ children }) {
         const res = await fetch(`${API}/auth/signup`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ name, email, password }),
         });
         const data = await res.json();
@@ -106,11 +74,8 @@ export function UserAuthProvider({ children }) {
           return { success: false, error: data.error || "Signup failed" };
         }
 
-        const t = data.token;
         const u = data.user;
-        setToken(t);
         setUser(u);
-        setStoredToken(t);
         return { success: true };
       } catch (err) {
         console.error("Signup error:", err);
@@ -121,30 +86,26 @@ export function UserAuthProvider({ children }) {
   );
 
   const logout = useCallback(() => {
-    setToken(null);
     setUser(null);
-    setStoredToken(null);
+    fetch(`${API}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => {});
   }, []);
 
-  const loginWithToken = useCallback(async (authToken, userData) => {
+  const loginWithToken = useCallback(async (_authToken, userData) => {
     try {
-      // If userData is provided (e.g., from OAuth), use it directly
       if (userData && userData.id) {
-        setToken(authToken);
         setUser(userData);
-        setStoredToken(authToken);
         return true;
       }
 
-      // Otherwise, validate the token by fetching user data
-      const fetchedUser = await fetchUser(authToken);
+      const fetchedUser = await fetchUser();
       if (!fetchedUser) {
         return false;
       }
 
-      setToken(authToken);
       setUser(fetchedUser);
-      setStoredToken(authToken);
       return true;
     } catch (error) {
       console.error("Login with token error:", error);
@@ -152,25 +113,17 @@ export function UserAuthProvider({ children }) {
     }
   }, [fetchUser]);
 
-  const getAuthHeaders = useCallback(() => {
-    const t = getStoredToken();
-    if (!t) return {};
-    return { Authorization: `Bearer ${t}` };
-  }, []);
-
   return (
     <AuthContext.Provider
       value={{
         user,
-        token,
         loading,
         isAuthenticated: !!user,
         login,
         loginWithToken,
         logout,
         signup,
-        getAuthHeaders,
-        refreshUser: () => fetchUser(getStoredToken()).then(setUser),
+        refreshUser: () => fetchUser().then(setUser),
       }}
     >
       {children}

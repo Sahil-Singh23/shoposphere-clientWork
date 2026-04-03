@@ -11,14 +11,31 @@ dotenv.config({ path: join(__dirname, "../.env") });
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
 
-function getBearerToken(req) {
-  return req.headers.authorization?.replace(/^Bearer\s+/i, "").trim() || null;
+const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "shoposphere_auth";
+
+function getCookieValue(req, name) {
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return null;
+
+  const cookies = cookieHeader.split(";");
+  for (const cookie of cookies) {
+    const [rawKey, ...rawValueParts] = cookie.split("=");
+    if (rawKey?.trim() !== name) continue;
+    const value = rawValueParts.join("=").trim();
+    return value ? decodeURIComponent(value) : null;
+  }
+
+  return null;
+}
+
+function getAuthToken(req) {
+  return getCookieValue(req, AUTH_COOKIE_NAME) || null;
 }
 
 /** Require valid JWT and hydrate req.auth from token. */
 export const requireAuth = (req, res, next) => {
   try {
-    const token = getBearerToken(req);
+    const token = getAuthToken(req);
     if (!token) return res.status(401).json({ message: "No token provided" });
     const decoded = jwt.verify(token, JWT_SECRET);
     req.auth = decoded;
@@ -30,15 +47,15 @@ export const requireAuth = (req, res, next) => {
 
 /**
  * Role-based middleware: requireRole(roleName)
- * - Extracts JWT from Authorization: Bearer <token>
+ * - Extracts JWT from auth cookie
  * - Validates token (signature + expiry)
- * - Loads user from DB and checks user.role === roleName (never trust token role for authorization)
+ * - Loads user from DB and checks user.role === roleName (never trust signed auth claims for access control)
  * If role !== required → rejects with 401 Unauthorized.
  * On success sets req.userId, req.userEmail, req.role, req.auth.
  */
 export const requireRole = (roleName) => async (req, res, next) => {
   try {
-    const token = getBearerToken(req);
+    const token = getAuthToken(req);
     if (!token) return res.status(401).json({ message: "No token provided" });
     const decoded = jwt.verify(token, JWT_SECRET);
     const userId = Number(decoded.userId);
@@ -68,7 +85,7 @@ export const verifyToken = requireRole("admin");
 /** Require valid JWT and set req.customerUserId (for customer-only routes like my-orders). */
 export const requireCustomerAuth = (req, res, next) => {
   try {
-    const token = req.headers.authorization?.replace(/^Bearer\s+/i, "").trim();
+    const token = getAuthToken(req);
     if (!token) return res.status(401).json({ message: "Login required" });
     const decoded = jwt.verify(token, JWT_SECRET);
     req.customerUserId = Number(decoded.userId);
@@ -82,7 +99,7 @@ export const requireCustomerAuth = (req, res, next) => {
 /** Like requireCustomerAuth but verifies DB role is `customer` (excludes admin/driver tokens). */
 export const requireCustomerOnly = async (req, res, next) => {
   try {
-    const token = getBearerToken(req);
+    const token = getAuthToken(req);
     if (!token) return res.status(401).json({ message: "Login required" });
     const decoded = jwt.verify(token, JWT_SECRET);
     const userId = Number(decoded.userId);
@@ -106,7 +123,7 @@ export const requireCustomerOnly = async (req, res, next) => {
 
 /** Optionally set req.customerUserId when valid JWT is present (for order creation to link user). */
 export const optionalCustomerAuth = (req, res, next) => {
-  const token = req.headers.authorization?.replace(/^Bearer\s+/i, "").trim();
+  const token = getAuthToken(req);
   if (!token) return next();
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
@@ -118,7 +135,7 @@ export const optionalCustomerAuth = (req, res, next) => {
 
 /** Optionally set req.isAdmin if valid admin token. Does not fail on missing/invalid token. */
 export const optionalAdminAuth = (req, res, next) => {
-  const token = req.headers.authorization?.replace(/^Bearer\s+/i, "").trim();
+  const token = getAuthToken(req);
   if (!token) return next();
   try {
     const decoded = jwt.verify(token, JWT_SECRET);

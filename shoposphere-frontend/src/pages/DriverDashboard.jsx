@@ -22,7 +22,7 @@ function formatDate(iso) {
 export default function DriverDashboard() {
   const navigate = useNavigate();
   const toast = useToast();
-  const { user, getAuthHeaders, logout } = useUserAuth();
+  const { user, logout } = useUserAuth();
   const [driver, setDriver] = useState(null);
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
@@ -31,10 +31,8 @@ export default function DriverDashboard() {
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
 
   const fetchOrders = useCallback(() => {
-    const headers = getAuthHeaders();
-    if (!headers.Authorization) return;
     setOrdersLoading(true);
-    fetch(`${API}/driver/orders`, { headers })
+    fetch(`${API}/driver/orders`, { credentials: "include" })
       .then((res) => {
         if (res.status === 401) return [];
         if (!res.ok) throw new Error("Failed to load orders");
@@ -43,10 +41,10 @@ export default function DriverDashboard() {
       .then((data) => setOrders(Array.isArray(data) ? data : []))
       .catch(() => setOrders([]))
       .finally(() => setOrdersLoading(false));
-  }, [getAuthHeaders]);
+  }, []);
 
   useEffect(() => {
-    fetch(`${API}/driver/me`, { headers: getAuthHeaders() })
+    fetch(`${API}/driver/me`, { credentials: "include" })
       .then((res) => {
         if (res.status === 401) {
           navigate("/", { replace: true });
@@ -60,19 +58,19 @@ export default function DriverDashboard() {
       })
       .catch((err) => setError(err.message || "Something went wrong"))
       .finally(() => setLoading(false));
-  }, [navigate, getAuthHeaders]);
+  }, [navigate]);
 
   useEffect(() => {
-    if (!getAuthHeaders().Authorization) return;
     fetchOrders();
-  }, [getAuthHeaders, fetchOrders]);
+  }, [fetchOrders]);
 
   const updateOrderStatus = async (orderId, newStatus) => {
     setUpdatingOrderId(orderId);
     try {
       const res = await fetch(`${API}/driver/orders/${orderId}/status`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ status: newStatus }),
       });
       const data = await res.json();

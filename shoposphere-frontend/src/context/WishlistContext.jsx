@@ -6,7 +6,7 @@ import { API } from "../api";
 const WishlistContext = createContext();
 
 export function WishlistProvider({ children }) {
-  const { isAuthenticated, getAuthHeaders } = useUserAuth();
+  const { isAuthenticated } = useUserAuth();
   const toast = useToast();
   const [wishlistItems, setWishlistItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -17,11 +17,9 @@ export function WishlistProvider({ children }) {
       setWishlistItems([]);
       return;
     }
-    const headers = getAuthHeaders();
-    if (!headers.Authorization) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/wishlist`, { headers, credentials: "include" });
+      const res = await fetch(`${API}/wishlist`, { credentials: "include" });
       const data = await res.json();
       if (res.ok && Array.isArray(data)) {
         setWishlistItems(data);
@@ -34,7 +32,7 @@ export function WishlistProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, getAuthHeaders]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetchWishlist();
@@ -59,11 +57,10 @@ export function WishlistProvider({ children }) {
       const id = Number(productId);
       if (!id) return false;
       setTogglingId(id);
-      const headers = { ...getAuthHeaders(), "Content-Type": "application/json" };
       try {
         const res = await fetch(`${API}/wishlist/add`, {
           method: "POST",
-          headers,
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ productId: id }),
           credentials: "include",
         });
@@ -83,7 +80,7 @@ export function WishlistProvider({ children }) {
         setTogglingId(null);
       }
     },
-    [isAuthenticated, getAuthHeaders, fetchWishlist, toast]
+    [isAuthenticated, fetchWishlist, toast]
   );
 
   const removeFromWishlist = useCallback(
@@ -92,11 +89,9 @@ export function WishlistProvider({ children }) {
       const id = Number(productId);
       if (!id) return false;
       setTogglingId(id);
-      const headers = getAuthHeaders();
       try {
         const res = await fetch(`${API}/wishlist/remove/${id}`, {
           method: "DELETE",
-          headers,
           credentials: "include",
         });
         if (res.ok) {
@@ -115,7 +110,7 @@ export function WishlistProvider({ children }) {
         setTogglingId(null);
       }
     },
-    [isAuthenticated, getAuthHeaders, fetchWishlist, toast]
+    [isAuthenticated, fetchWishlist, toast]
   );
 
   const toggleWishlist = useCallback(

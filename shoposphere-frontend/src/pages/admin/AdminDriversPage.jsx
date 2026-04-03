@@ -40,15 +40,10 @@ export default function AdminDriversPage() {
   const [addForm, setAddForm] = useState({ name: "", email: "", phone: "", password: "" });
   const [adding, setAdding] = useState(false);
 
-  const getHeaders = () => ({
-    Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
-    "Content-Type": "application/json",
-  });
-
   const fetchDrivers = () => {
     setError(null);
     setLoading(true);
-    fetch(`${API}/admin/drivers`, { headers: getHeaders() })
+    fetch(`${API}/admin/drivers`, { credentials: "include" })
       .then((res) => {
         if (res.status === 401) {
           logout();
@@ -67,11 +62,6 @@ export default function AdminDriversPage() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("adminToken");
-    if (!token) {
-      navigate("/admin/login", { replace: true });
-      return;
-    }
     fetchDrivers();
   }, [navigate, logout, toast]);
 
@@ -81,7 +71,8 @@ export default function AdminDriversPage() {
     try {
       const res = await fetch(`${API}/admin/drivers/update-status/${driverId}`, {
         method: "PUT",
-        headers: getHeaders(),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ status: newStatus }),
       });
       const data = await res.json();
@@ -115,7 +106,8 @@ export default function AdminDriversPage() {
     try {
       const res = await fetch(`${API}/admin/drivers/add`, {
         method: "POST",
-        headers: getHeaders(),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           name: name.trim(),
           phone: phone.trim(),

@@ -9,12 +9,9 @@ export default function BannerList({ banners, onEdit, onDelete }) {
     if (!confirm("Are you sure you want to delete this banner?")) return;
 
     try {
-      const token = localStorage.getItem("adminToken");
       const res = await fetch(`${API}/banners/${bannerId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
       });
 
       if (res.ok) {

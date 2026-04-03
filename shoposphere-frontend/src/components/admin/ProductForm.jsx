@@ -286,7 +286,6 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
     isSubmittingRef.current = true;
 
     try {
-      const token = localStorage.getItem("adminToken");
       const formDataToSend = new FormData();
 
       formDataToSend.append("name", formData.name);
@@ -383,9 +382,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
 
       const res = await fetch(url, {
         method,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
         body: formDataToSend,
       });
 

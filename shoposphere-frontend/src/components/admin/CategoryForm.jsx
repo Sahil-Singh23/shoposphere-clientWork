@@ -88,7 +88,6 @@ export default function CategoryForm({ category, onSave, onCancel }) {
     isSubmittingRef.current = true;
 
     try {
-      const token = localStorage.getItem("adminToken");
       const url = category ? `${API}/categories/${category.id}` : `${API}/categories`;
       const method = category ? "PUT" : "POST";
 
@@ -108,9 +107,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
 
       const res = await fetch(url, {
         method,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
         body: formDataToSend,
       });
 

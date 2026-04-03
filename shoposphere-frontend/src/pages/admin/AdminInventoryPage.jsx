@@ -32,14 +32,9 @@ export default function AdminInventoryPage() {
   const [editValue, setEditValue] = useState("");
   const [savingRowId, setSavingRowId] = useState(null);
 
-  const getHeaders = () => ({
-    Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
-    "Content-Type": "application/json",
-  });
-
   const fetchInventory = () => {
     setError(null);
-    fetch(`${API}/admin/inventory`, { headers: getHeaders() })
+    fetch(`${API}/admin/inventory`, { credentials: "include" })
       .then((res) => {
         if (res.status === 401) {
           logout();
@@ -58,11 +53,6 @@ export default function AdminInventoryPage() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("adminToken");
-    if (!token) {
-      navigate("/admin/login", { replace: true });
-      return;
-    }
     fetchInventory();
   }, [navigate, logout, toast]);
 
@@ -90,7 +80,8 @@ export default function AdminInventoryPage() {
       };
       const res = await fetch(`${API}/admin/products/update-stock/${row.productId}`, {
         method: "PUT",
-        headers: getHeaders(),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(body),
       });
       const data = await res.json();

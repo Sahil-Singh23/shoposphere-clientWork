@@ -39,7 +39,7 @@ export default function Home() {
   const toast = useToast();
   const { recentIds } = useRecentlyViewed();
   const { wishlistItems, isInWishlist, toggleWishlist, togglingId } = useWishlist();
-  const { isAuthenticated, getAuthHeaders } = useUserAuth();
+  const { isAuthenticated } = useUserAuth();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [reels, setReels] = useState([]);
@@ -90,10 +90,8 @@ export default function Home() {
       setBuyAgainIds([]);
       return;
     }
-    const headers = getAuthHeaders();
-    if (!headers.Authorization) return;
     const ac = new AbortController();
-    fetch(`${API}/orders/my-orders`, { headers, credentials: "include", signal: ac.signal })
+    fetch(`${API}/orders/my-orders`, { credentials: "include", signal: ac.signal })
       .then((res) => res.json())
       .then((orders) => {
         if (!Array.isArray(orders)) return;
@@ -113,7 +111,7 @@ export default function Home() {
       })
       .catch(() => setBuyAgainIds([]));
     return () => ac.abort();
-  }, [isAuthenticated, getAuthHeaders]);
+  }, [isAuthenticated]);
 
   const isInitialLoad = loading.categories || loading.products || loading.reels;
 

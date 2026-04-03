@@ -9,12 +9,9 @@ export default function CategoryList({ categories, onEdit, onDelete }) {
     if (!confirm("Are you sure you want to delete this category?")) return;
 
     try {
-      const token = localStorage.getItem("adminToken");
       const res = await fetch(`${API}/categories/${categoryId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
       });
 
       if (res.ok) {

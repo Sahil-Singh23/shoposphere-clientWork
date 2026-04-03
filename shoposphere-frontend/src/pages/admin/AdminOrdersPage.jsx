@@ -52,18 +52,8 @@ export default function AdminOrdersPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const getHeaders = () => ({
-    Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
-    "Content-Type": "application/json",
-  });
-
   useEffect(() => {
-    const token = localStorage.getItem("adminToken");
-    if (!token) {
-      navigate("/admin/login", { replace: true });
-      return;
-    }
-    fetch(`${API}/admin/orders`, { headers: getHeaders() })
+    fetch(`${API}/admin/orders`, { credentials: "include" })
       .then((res) => {
         if (res.status === 401) {
           logout();
@@ -117,7 +107,8 @@ export default function AdminOrdersPage() {
     try {
       const res = await fetch(`${API}/admin/orders/update-status/${orderId}`, {
         method: "PUT",
-        headers: getHeaders(),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ orderStatus: newStatus }),
       });
       const data = await res.json();

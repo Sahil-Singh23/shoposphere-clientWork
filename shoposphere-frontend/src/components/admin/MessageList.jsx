@@ -6,12 +6,9 @@ export default function MessageList({ messages, onUpdate }) {
   const toast = useToast();
   const markAsRead = async (messageId) => {
     try {
-      const token = localStorage.getItem("adminToken");
       const res = await fetch(`${API}/contact/${messageId}/read`, {
         method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
       });
 
       if (res.ok) {
@@ -30,12 +27,9 @@ export default function MessageList({ messages, onUpdate }) {
     if (!confirm("Delete this message?")) return;
 
     try {
-      const token = localStorage.getItem("adminToken");
       const res = await fetch(`${API}/contact/${messageId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
       });
 
       if (res.ok) {

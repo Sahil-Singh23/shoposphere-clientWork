@@ -180,7 +180,6 @@ export default function OrderableList({
 
     setSaving(true);
     try {
-      const token = localStorage.getItem("adminToken");
       const orderData = itemsToSave.map((item, index) => ({
         id: getItemId(item),
         order: index + 1,
@@ -190,8 +189,8 @@ export default function OrderableList({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify({ items: orderData }),
       });
 

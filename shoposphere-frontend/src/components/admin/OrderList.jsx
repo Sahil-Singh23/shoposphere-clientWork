@@ -6,13 +6,12 @@ export default function OrderList({ orders, onUpdate }) {
   const toast = useToast();
   const updateStatus = async (orderId, newStatus) => {
     try {
-      const token = localStorage.getItem("adminToken");
       const res = await fetch(`${API}/orders/${orderId}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify({ status: newStatus }),
       });
 

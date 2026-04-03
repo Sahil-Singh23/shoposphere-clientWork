@@ -21,13 +21,8 @@ export default function AdminReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
 
-  const getHeaders = () => ({
-    Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
-    "Content-Type": "application/json",
-  });
-
   const fetchReviews = () => {
-    fetch(`${API}/admin/reviews`, { headers: getHeaders() })
+    fetch(`${API}/admin/reviews`, { credentials: "include" })
       .then((res) => {
         if (res.status === 401) {
           logout();
@@ -42,11 +37,6 @@ export default function AdminReviewsPage() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("adminToken");
-    if (!token) {
-      navigate("/admin/login", { replace: true });
-      return;
-    }
     fetchReviews();
   }, [navigate, logout]);
 
@@ -55,7 +45,7 @@ export default function AdminReviewsPage() {
     try {
       const res = await fetch(`${API}/reviews/delete/${id}`, {
         method: "DELETE",
-        headers: getHeaders(),
+        credentials: "include",
       });
       const data = await res.json();
       if (res.ok) {
