@@ -9,6 +9,14 @@ import { getPriceRange, getRecommendationsForProduct } from "../utils/recommenda
 const router = express.Router();
 const COLOR_UPLOAD_TOKEN_PREFIX = "__COLOR_UPLOAD_";
 
+/** Optional PDP highlight fields — empty string → null, max length guarded */
+function optionalProductDetailString(value) {
+  if (value == null) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  return s.length > 500 ? s.slice(0, 500) : s;
+}
+
 function deriveSizesFromVariants(variants = []) {
   const byLabel = new Map();
   for (const v of variants) {
@@ -461,6 +469,13 @@ router.post("/", requireRole("admin"), uploadProductMedia, async (req, res) => {
       existingImages,
       existingVideos,
       instagramEmbeds,
+      materialComposition,
+      pattern,
+      fitType,
+      sleeveType,
+      collarStyle,
+      lengthDetail,
+      countryOfOrigin,
     } = req.body;
 
     // Upload images; for duplicate/create, existingImages can provide initial URLs
@@ -540,6 +555,13 @@ router.post("/", requireRole("admin"), uploadProductMedia, async (req, res) => {
           videos: videoUrls.length > 0 ? JSON.stringify(videoUrls) : null,
           instagramEmbeds: validatedInstagramEmbeds.length > 0 ? JSON.stringify(validatedInstagramEmbeds) : null,
           keywords: JSON.stringify(keywordsArray),
+          materialComposition: optionalProductDetailString(materialComposition),
+          pattern: optionalProductDetailString(pattern),
+          fitType: optionalProductDetailString(fitType),
+          sleeveType: optionalProductDetailString(sleeveType),
+          collarStyle: optionalProductDetailString(collarStyle),
+          lengthDetail: optionalProductDetailString(lengthDetail),
+          countryOfOrigin: optionalProductDetailString(countryOfOrigin),
           categories: {
             create: categoryIdsArray.map((categoryId) => ({
               categoryId: Number(categoryId),
@@ -639,6 +661,13 @@ router.put("/:id", requireRole("admin"), uploadProductMedia, async (req, res) =>
       existingImages,
       existingVideos,
       instagramEmbeds,
+      materialComposition,
+      pattern,
+      fitType,
+      sleeveType,
+      collarStyle,
+      lengthDetail,
+      countryOfOrigin,
     } = req.body;
 
     const existingProduct = await prisma.product.findUnique({
@@ -719,6 +748,13 @@ router.put("/:id", requireRole("admin"), uploadProductMedia, async (req, res) =>
           videos: videoUrls.length > 0 ? JSON.stringify(videoUrls) : null,
           instagramEmbeds: validatedInstagramEmbeds.length > 0 ? JSON.stringify(validatedInstagramEmbeds) : null,
           keywords: JSON.stringify(keywordsArray),
+          materialComposition: optionalProductDetailString(materialComposition),
+          pattern: optionalProductDetailString(pattern),
+          fitType: optionalProductDetailString(fitType),
+          sleeveType: optionalProductDetailString(sleeveType),
+          collarStyle: optionalProductDetailString(collarStyle),
+          lengthDetail: optionalProductDetailString(lengthDetail),
+          countryOfOrigin: optionalProductDetailString(countryOfOrigin),
           categories: {
             create: categoryIdsArray.map((categoryId) => ({
               categoryId: Number(categoryId),

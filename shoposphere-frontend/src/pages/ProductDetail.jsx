@@ -19,6 +19,7 @@ import {
   formatInr,
   getMinPriceForProduct,
   getPrimaryCategory,
+  getProductHighlightRows,
   normalizeImageList,
   parseInstagramEmbedsList,
   parseWeightOptions,
@@ -511,6 +512,8 @@ export default function ProductDetail() {
     return "Select size/weight";
   }, [product, resolvedPricing.selling]);
 
+  const highlightRows = useMemo(() => getProductHighlightRows(product), [product]);
+
   const narrativeParagraphs = useMemo(() => {
     const text = (product?.description || "").trim();
     if (!text) return [];
@@ -984,15 +987,39 @@ export default function ProductDetail() {
 
             <div className="mt-20 lg:mt-28 px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
               <div className="lg:col-span-8 space-y-16 lg:space-y-20">
-                {narrativeParagraphs.length > 0 ? (
-                  <section className="space-y-6 lg:space-y-8">
+                {highlightRows.length > 0 ? (
+                  <section className="space-y-4 lg:space-y-5">
                     <h2 className="pd-headline text-2xl sm:text-3xl font-black uppercase tracking-tighter text-[#1a1c1d]">
-                      Product narrative
+                      Top highlights
                     </h2>
-                    <div className="space-y-6 text-[#474747] leading-relaxed text-base sm:text-lg max-w-2xl">
-                      {narrativeParagraphs.map((para, i) => (
-                        <p key={i}>{para}</p>
-                      ))}
+                    <div className="rounded-2xl border border-neutral-200/80 bg-neutral-100 p-6 md:p-8 max-w-2xl">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10">
+                        {highlightRows.map((row) => (
+                          <div
+                            key={row.label}
+                            className="flex justify-between gap-4 py-3 border-b border-neutral-200"
+                          >
+                            <span className="font-bold text-xs uppercase tracking-widest text-neutral-600 shrink-0">
+                              {row.label}
+                            </span>
+                            <span className="text-sm font-medium text-neutral-900 text-right">{row.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </section>
+                ) : null}
+                {narrativeParagraphs.length > 0 ? (
+                  <section className="space-y-4 lg:space-y-5">
+                    <h2 className="pd-headline text-2xl sm:text-3xl font-black uppercase tracking-tighter text-[#1a1c1d]">
+                      About this item
+                    </h2>
+                    <div className="rounded-2xl border border-neutral-200/80 bg-neutral-100 p-6 md:p-8 max-w-2xl">
+                      <div className="space-y-6 text-neutral-700 leading-relaxed text-base sm:text-lg">
+                        {narrativeParagraphs.map((para, i) => (
+                          <p key={i}>{para}</p>
+                        ))}
+                      </div>
                     </div>
                   </section>
                 ) : null}

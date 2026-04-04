@@ -3,10 +3,36 @@ import { API } from "../../api";
 import VideoUpload from "./VideoUpload";
 import InstagramEmbedInput from "./InstagramEmbedInput";
 import { useToast } from "../../context/ToastContext";
+import { PRODUCT_HIGHLIGHT_FIELDS } from "../../utils/productDetailHelpers";
 
 // Treat as "edit" only when product has a valid id (duplicate passes product with id null/undefined)
 const isEditProduct = (p) => p && (p.id != null && p.id !== "");
 const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "XXL"];
+
+function emptyHighlightFormFields() {
+  return {
+    materialComposition: "",
+    pattern: "",
+    fitType: "",
+    sleeveType: "",
+    collarStyle: "",
+    lengthDetail: "",
+    countryOfOrigin: "",
+  };
+}
+
+function highlightFormFieldsFromProduct(product) {
+  if (!product) return emptyHighlightFormFields();
+  return {
+    materialComposition: product.materialComposition ?? "",
+    pattern: product.pattern ?? "",
+    fitType: product.fitType ?? "",
+    sleeveType: product.sleeveType ?? "",
+    collarStyle: product.collarStyle ?? "",
+    lengthDetail: product.lengthDetail ?? "",
+    countryOfOrigin: product.countryOfOrigin ?? "",
+  };
+}
 
 function parseColorImageUrls(color) {
   if (!color) return [];
@@ -43,6 +69,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
     isReady60Min: false,
     originalPrice: "", // MRP for single-price products
     keywords: "",
+    ...emptyHighlightFormFields(),
   });
   const [productVariants, setProductVariants] = useState([]);
   const [variantMode, setVariantMode] = useState("color");
@@ -95,6 +122,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
         isReady60Min: product.isReady60Min || false,
         originalPrice: product.originalPrice != null ? String(product.originalPrice) : "",
         keywords: product.keywords ? (Array.isArray(product.keywords) ? product.keywords.join(", ") : product.keywords) : "",
+        ...highlightFormFieldsFromProduct(product),
       });
       const colorRows = Array.isArray(product.colors) ? product.colors : [];
       const variantRows = Array.isArray(product.variants) ? product.variants : [];
@@ -160,6 +188,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
         isReady60Min: false,
         originalPrice: "",
         keywords: "",
+        ...emptyHighlightFormFields(),
       });
       setProductVariants([]);
       setImages([]);
@@ -188,6 +217,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
               isReady60Min: product.isReady60Min || false,
               originalPrice: product.originalPrice != null ? String(product.originalPrice) : "",
               keywords: product.keywords ? (Array.isArray(product.keywords) ? product.keywords.join(", ") : product.keywords) : "",
+              ...highlightFormFieldsFromProduct(product),
             }
           : {
               name: "",
@@ -200,6 +230,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
               isReady60Min: false,
               originalPrice: "",
               keywords: "",
+              ...emptyHighlightFormFields(),
             },
         sizes:
           product?.sizes && product.sizes.length > 0
@@ -296,7 +327,14 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
       formDataToSend.append("isTrending", formData.isTrending);
       formDataToSend.append("isReady60Min", formData.isReady60Min);
       formDataToSend.append("originalPrice", formData.originalPrice || "");
-      
+      formDataToSend.append("materialComposition", formData.materialComposition || "");
+      formDataToSend.append("pattern", formData.pattern || "");
+      formDataToSend.append("fitType", formData.fitType || "");
+      formDataToSend.append("sleeveType", formData.sleeveType || "");
+      formDataToSend.append("collarStyle", formData.collarStyle || "");
+      formDataToSend.append("lengthDetail", formData.lengthDetail || "");
+      formDataToSend.append("countryOfOrigin", formData.countryOfOrigin || "");
+
       // Auto-generate keywords from product name if not already set
       let keywordsArray = [];
       if (formData.keywords && formData.keywords.trim() !== "") {
@@ -403,6 +441,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
           isReady60Min: false,
           originalPrice: "",
           keywords: "",
+          ...emptyHighlightFormFields(),
         });
         setProductVariants([]);
         setImages([]);
@@ -438,6 +477,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
       isReady60Min: false,
       originalPrice: "",
       keywords: "",
+      ...emptyHighlightFormFields(),
     });
     setProductVariants([]);
     setImages([]);
@@ -753,14 +793,45 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
           )}
         </div>
 
-        <div>
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <label className="block text-sm font-semibold text-gray-700">Description *</label>
+        <div className="rounded-xl border-2 border-neutral-200 bg-neutral-100 p-4 md:p-5 space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-neutral-900">Top highlights (optional)</h3>
+            <p className="text-xs mt-1 text-neutral-600">
+              Shown on the product page above &quot;About this item&quot;. Leave blank to hide a row.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {PRODUCT_HIGHLIGHT_FIELDS.map(({ key, label }) => (
+              <div key={key}>
+                <label className="block text-xs font-semibold mb-1.5 text-neutral-600">{label}</label>
+                <input
+                  type="text"
+                  value={formData[key]}
+                  onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
+                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm text-neutral-900 bg-white focus:outline-none focus:ring-2 focus:ring-neutral-400/40 focus:border-neutral-300"
+                  placeholder="Optional"
+                  maxLength={500}
+                  autoComplete="off"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-xl border-2 border-neutral-200 bg-neutral-100 p-4 md:p-5 space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-neutral-900">About this item *</h3>
+            <p className="text-xs mt-1 text-neutral-600">
+              Long-form copy for the product page. Use a blank line between paragraphs.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-neutral-600">AI assist</span>
             <div className="flex items-center gap-2 flex-wrap">
               <select
                 value={descriptionLanguage}
                 onChange={(e) => setDescriptionLanguage(e.target.value)}
-                className="text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-pink-500"
+                className="text-sm border border-neutral-200 rounded-md px-2 py-1.5 bg-white text-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400/40"
                 disabled={generatingDescription}
               >
                 <option value="English">English</option>
@@ -771,11 +842,11 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
                 type="button"
                 onClick={() => handleGenerateDescription(false)}
                 disabled={generatingDescription}
-                className="text-sm px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                className="text-sm px-3 py-1.5 bg-white border border-neutral-200 text-neutral-800 rounded-lg font-medium hover:bg-neutral-50 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               >
                 {generatingDescription ? (
                   <>
-                    <span className="inline-block w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="inline-block w-3.5 h-3.5 border-2 border-neutral-400 border-t-transparent rounded-full animate-spin" />
                     Generating…
                   </>
                 ) : (
@@ -787,7 +858,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
                   type="button"
                   onClick={() => handleGenerateDescription(true)}
                   disabled={generatingDescription}
-                  className="text-sm px-3 py-1.5 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg font-medium hover:bg-amber-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="text-sm px-3 py-1.5 text-amber-800 bg-amber-50 border border-amber-200 rounded-lg font-medium hover:bg-amber-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Regenerate
                 </button>
@@ -797,10 +868,10 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
           <textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="w-full px-4 py-2.5 border-2 rounded-lg focus:outline-none transition"
-            style={{ borderColor: "var(--border)", backgroundColor: "var(--input)", color: "var(--foreground)" }}
-            rows="4"
+            className="w-full px-4 py-2.5 border border-neutral-200 rounded-lg text-neutral-900 bg-white focus:outline-none focus:ring-2 focus:ring-neutral-400/40 focus:border-neutral-300 transition min-h-[7rem]"
+            rows="5"
             required
+            placeholder="Describe the product for shoppers…"
           />
         </div>
 

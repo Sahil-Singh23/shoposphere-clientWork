@@ -81,6 +81,14 @@ model Product {
   instagramEmbeds String?      @db.Text // JSON array of Instagram embed objects: [{url, enabled, createdAt}]
   keywords      String         @db.Text // JSON array for multilingual search
   order         Int            @default(0) // For ordering products
+  // Optional PDP “Top highlights” (admin-editable)
+  materialComposition String?  @map("materialConsumption") @db.VarChar(500)
+  pattern             String?  @db.VarChar(500)
+  fitType             String?  @db.VarChar(500)
+  sleeveType          String?  @db.VarChar(500)
+  collarStyle         String?  @db.VarChar(500)
+  lengthDetail        String?  @db.VarChar(500) // garment length (e.g. ankle, midi)
+  countryOfOrigin     String?  @db.VarChar(500)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 

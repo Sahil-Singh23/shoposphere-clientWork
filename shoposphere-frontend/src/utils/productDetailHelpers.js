@@ -195,3 +195,24 @@ export function resolveDisplayedPricing(product, selectedWeight, selectedSize, s
 
   return { selling, mrp, showFrom };
 }
+
+/** Keys match API / Prisma camelCase fields for optional “Top highlights” on PDP */
+export const PRODUCT_HIGHLIGHT_FIELDS = [
+  { key: "materialComposition", label: "Material composition" },
+  { key: "pattern", label: "Pattern" },
+  { key: "fitType", label: "Fit type" },
+  { key: "sleeveType", label: "Sleeve type" },
+  { key: "collarStyle", label: "Collar style" },
+  { key: "lengthDetail", label: "Length" },
+  { key: "countryOfOrigin", label: "Country of origin" },
+];
+
+/** Rows with only non-empty values, for product detail “Top highlights” */
+export function getProductHighlightRows(product) {
+  if (!product) return [];
+  return PRODUCT_HIGHLIGHT_FIELDS.map(({ key, label }) => {
+    const raw = product[key];
+    const value = raw != null ? String(raw).trim() : "";
+    return value ? { label, value } : null;
+  }).filter(Boolean);
+}
