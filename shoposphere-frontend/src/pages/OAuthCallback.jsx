@@ -23,20 +23,25 @@ export default function OAuthCallback() {
           return;
         }
 
-        const response = await fetch(`${API}/auth/me`, {
-          credentials: 'include',
-        });
+        // Read token and user data from query parameters (set by backend OAuth callback)
+        const token = searchParams.get('token');
+        const userId = searchParams.get('userId');
+        const role = searchParams.get('role');
 
-        if (!response.ok) {
-          console.error('Failed to fetch user data');
+        if (!token || !userId) {
+          console.error('Missing token or userId from OAuth callback');
           navigate('/', { replace: true });
           return;
         }
 
-        const data = await response.json();
-        const user = data.user;
+        // Construct user object from query params
+        const user = {
+          id: parseInt(userId, 10),
+          role: role || 'customer',
+        };
 
-        const success = await loginWithToken(null, user);
+        // Log in with the token and user data
+        const success = await loginWithToken(token, user);
         
         if (success) {
           // Merge cart for regular customers

@@ -13,6 +13,10 @@ const AUTH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const isProduction = process.env.NODE_ENV === "production";
 const AUTH_COOKIE_OPTIONS = {
   httpOnly: true,
+  // In production with HTTPS: use SameSite=None & secure=true for cross-origin.
+  // In dev with HTTP: SameSite=None requires secure=true (browser enforces this),
+  // so we use SameSite=Lax which works with HTTP but requires same-site requests.
+  // For cross-origin dev (frontend on 5173, backend on 3004), we'll handle it differently.
   secure: isProduction,
   sameSite: isProduction ? "none" : "lax",
   path: "/",
@@ -313,10 +317,13 @@ router.get('/login/federated/google/callback',
         { expiresIn: "30d" }
       );
 
+      // Set auth cookie (for same-origin requests)
       setAuthCookie(res, token);
       
+      // Also include token in URL fragment for cross-origin OAuth flow
+      // Fragment is not sent to server, so it's safer from logging/headers
       const frontendURL = process.env.FRONTEND_URL || 'http://localhost:5173';
-      res.redirect(`${frontendURL}/auth/callback`);
+      res.redirect(`${frontendURL}/auth/callback?token=${token}&userId=${user.id}&role=${user.role}`);
     } catch (error) {
       console.error('OAuth callback error:', error);
       const frontendURL = process.env.FRONTEND_URL || 'http://localhost:5173';

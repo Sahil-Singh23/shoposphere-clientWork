@@ -20,12 +20,18 @@ export function AuthProvider({ children }) {
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
+      } else if (res.status === 401) {
+        // 401 means invalid/expired token or user is not admin
+        // For admin dashboard, this is expected for non-admin users
+        // Don't logout here - let UserAuthContext handle customer auth
+        setUser(null);
       } else {
+        // Other errors might warrant logout
         logout();
       }
     } catch (error) {
       console.error("Token verification error:", error);
-      logout();
+      setUser(null);
     } finally {
       setLoading(false);
     }
