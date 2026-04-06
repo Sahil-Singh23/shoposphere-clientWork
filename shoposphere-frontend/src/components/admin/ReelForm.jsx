@@ -16,10 +16,10 @@ export default function ReelForm({ reel, onSave, onCancel }) {
     isTrending: false,
     isFeatured: false,
     discountPct: "",
+    placement: "home",
   });
   const [videoFile, setVideoFile] = useState(null);
   const [thumbnailFile, setThumbnailFile] = useState(null);
-  const [videoPreview, setVideoPreview] = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
   const [existingVideoUrl, setExistingVideoUrl] = useState(null);
   const [existingThumbnail, setExistingThumbnail] = useState(null);
@@ -54,10 +54,10 @@ export default function ReelForm({ reel, onSave, onCancel }) {
         isTrending: !!reel.isTrending,
         isFeatured: !!reel.isFeatured,
         discountPct: reel.discountPct !== null && reel.discountPct !== undefined ? String(reel.discountPct) : "",
+        placement: reel.placement === "about" ? "about" : "home",
       });
       setExistingVideoUrl(reel.videoUrl || reel.url || null);
       setExistingThumbnail(reel.thumbnail || null);
-      setVideoPreview(reel.videoUrl || reel.url || null);
       setThumbnailPreview(reel.thumbnail || null);
       setVideoFile(null);
       setThumbnailFile(null);
@@ -73,10 +73,10 @@ export default function ReelForm({ reel, onSave, onCancel }) {
         isTrending: false,
         isFeatured: false,
         discountPct: "",
+        placement: "home",
       });
       setExistingVideoUrl(null);
       setExistingThumbnail(null);
-      setVideoPreview(null);
       setThumbnailPreview(null);
       setVideoFile(null);
       setThumbnailFile(null);
@@ -96,6 +96,7 @@ export default function ReelForm({ reel, onSave, onCancel }) {
               isTrending: !!reel.isTrending,
               isFeatured: !!reel.isFeatured,
               discountPct: reel.discountPct !== null && reel.discountPct !== undefined ? String(reel.discountPct) : "",
+              placement: reel.placement === "about" ? "about" : "home",
             }
           : {
               title: "",
@@ -108,6 +109,7 @@ export default function ReelForm({ reel, onSave, onCancel }) {
               isTrending: false,
               isFeatured: false,
               discountPct: "",
+              placement: "home",
             }
       );
     }, 0);
@@ -118,11 +120,7 @@ export default function ReelForm({ reel, onSave, onCancel }) {
     if (file) {
       if (file.type.startsWith("video/")) {
         setVideoFile(file);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setVideoPreview(reader.result);
-        };
-        reader.readAsDataURL(file);
+        // No inline video preview in form; keep selected file metadata only.
       } else {
         toast.error("Please select a video file");
       }
@@ -147,7 +145,6 @@ export default function ReelForm({ reel, onSave, onCancel }) {
 
   const removeVideo = () => {
     setVideoFile(null);
-    setVideoPreview(existingVideoUrl);
     if (videoInputRef.current) {
       videoInputRef.current.value = "";
     }
@@ -188,6 +185,7 @@ export default function ReelForm({ reel, onSave, onCancel }) {
       formDataToSend.append("isTrending", form.isTrending);
       formDataToSend.append("isFeatured", form.isFeatured);
       formDataToSend.append("discountPct", form.discountPct);
+      formDataToSend.append("placement", form.placement);
       
       // Add video: file takes priority over URL
       if (videoFile) {
@@ -235,10 +233,10 @@ export default function ReelForm({ reel, onSave, onCancel }) {
             isTrending: false,
             isFeatured: false,
             discountPct: "",
+            placement: "home",
           });
           setVideoFile(null);
           setThumbnailFile(null);
-          setVideoPreview(null);
           setThumbnailPreview(null);
           setExistingVideoUrl(null);
           setExistingThumbnail(null);
@@ -276,10 +274,10 @@ export default function ReelForm({ reel, onSave, onCancel }) {
       isTrending: false,
       isFeatured: false,
       discountPct: "",
+      placement: "home",
     });
     setVideoFile(null);
     setThumbnailFile(null);
-    setVideoPreview(null);
     setThumbnailPreview(null);
     setExistingVideoUrl(null);
     setExistingThumbnail(null);
@@ -376,15 +374,6 @@ export default function ReelForm({ reel, onSave, onCancel }) {
                   </button>
                 </div>
               )}
-              {videoPreview && (
-                <div className="mt-2 relative w-full max-w-xs">
-                  <video
-                    src={videoPreview}
-                    controls
-                    className="w-full rounded-lg border border-gray-200"
-                  />
-                </div>
-              )}
             </div>
             
             {/* URL Input */}
@@ -397,9 +386,6 @@ export default function ReelForm({ reel, onSave, onCancel }) {
                 value={form.url}
                 onChange={(e) => {
                   setForm({ ...form, url: e.target.value });
-                  if (e.target.value && !videoFile) {
-                    setVideoPreview(e.target.value);
-                  }
                 }}
                 className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-black transition"
                 placeholder="https://.../reel.mp4"
@@ -523,6 +509,20 @@ export default function ReelForm({ reel, onSave, onCancel }) {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Placement
+            </label>
+            <select
+              value={form.placement}
+              onChange={(e) => setForm({ ...form, placement: e.target.value })}
+              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-black transition"
+            >
+              <option value="home">Home</option>
+              <option value="about">About</option>
+            </select>
+          </div>
+
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Platform

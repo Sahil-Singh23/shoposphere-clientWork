@@ -1101,11 +1101,11 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
 
                       <div className="border rounded-lg p-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--muted)" }}>
                         <label className="text-xs font-semibold text-gray-700 block mb-2">Available Sizes</label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                        <div className="grid grid-cols-6 sm:grid-cols- md:grid-cols-12 gap-2">
                           {SIZE_OPTIONS.map((size) => {
                             const checked = Object.prototype.hasOwnProperty.call(variant.sizeStocks || {}, size);
                             return (
-                              <label key={`${variant.id}-${size}`} className="inline-flex items-center gap-2 px-2 py-1 rounded border bg-white" style={{ borderColor: "var(--border)" }}>
+                              <label key={`${variant.id}-${size}`} className="inline-flex items-center gap-2 px-2 py-2 rounded-xs bg-teal-50" style={{ borderColor: "var(--border)" }}>
                                 <input
                                   type="checkbox"
                                   checked={checked}

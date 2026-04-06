@@ -13,6 +13,11 @@ enum UserRole {
   driver
 }
 
+enum ReelPlacement {
+  home
+  about
+}
+
 model User {
   id            Int           @id @default(autoincrement())
   name          String
@@ -271,6 +276,7 @@ model Reel {
   isFeatured  Boolean   @default(false) // Primary featured video in center
   viewCount   Int       @default(0)
   discountPct Int?      // e.g. 48
+  placement   ReelPlacement @default(home)
 
   isActive    Boolean   @default(true)
   order       Int       @default(0) // For ordering reels
@@ -278,6 +284,7 @@ model Reel {
   updatedAt   DateTime  @updatedAt
 
   @@index([isActive, order])
+  @@index([placement, isActive, order])
   @@index([isTrending, order])
   @@index([isFeatured])
 }

@@ -8,8 +8,9 @@ const router = express.Router();
 // Get all active reels (public) - Cached for 5 minutes
 router.get("/", cacheMiddleware(5 * 60 * 1000), async (req, res) => {
   try {
+    const placement = req.query.placement === "about" ? "about" : req.query.placement === "home" ? "home" : null;
     const reels = await prisma.reel.findMany({
-      where: { isActive: true },
+      where: placement ? { isActive: true, placement } : { isActive: true },
       orderBy: { order: "asc" },
       include: {
         product: {
@@ -65,12 +66,13 @@ router.post("/", requireRole("admin"), uploadReelFiles.fields([
     // Invalidate reels cache on create
     invalidateCache("/reels");
     
-    const { title, url, videoUrl, thumbnail, platform, isActive, order, productId, isTrending, isFeatured, discountPct } = req.body;
+    const { title, url, videoUrl, thumbnail, platform, isActive, order, productId, isTrending, isFeatured, discountPct, placement } = req.body;
+    const reelPlacement = placement === "about" ? "about" : "home";
 
     // If setting a reel as featured, unset all other featured reels
     if (isFeatured === "true" || isFeatured === true) {
       await prisma.reel.updateMany({
-        where: { isFeatured: true },
+        where: { isFeatured: true, placement: reelPlacement },
         data: { isFeatured: false },
       });
     }
@@ -100,6 +102,7 @@ router.post("/", requireRole("admin"), uploadReelFiles.fields([
         isTrending: isTrending === "true" || isTrending === true,
         isFeatured: isFeatured === "true" || isFeatured === true,
         discountPct: discountPct !== undefined && discountPct !== null && discountPct !== "" ? Number(discountPct) : null,
+        placement: reelPlacement,
         isActive: isActive === "true" || isActive === true || (isActive === undefined ? true : false),
         order: order !== undefined && order !== null && order !== "" ? Number(order) : 0,
       },
@@ -121,13 +124,16 @@ router.put("/:id", requireRole("admin"), uploadReelFiles.fields([
     // Invalidate reels cache on update
     invalidateCache("/reels");
     
-    const { title, url, videoUrl, thumbnail, platform, isActive, order, productId, isTrending, isFeatured, discountPct, existingVideoUrl, existingThumbnail } = req.body;
+    const { title, url, videoUrl, thumbnail, platform, isActive, order, productId, isTrending, isFeatured, discountPct, existingVideoUrl, existingThumbnail, placement } = req.body;
+    const existing = await prisma.reel.findUnique({ where: { id: Number(req.params.id) }, select: { id: true, placement: true } });
+    const reelPlacement = placement === "about" ? "about" : placement === "home" ? "home" : (existing?.placement || "home");
 
     // If setting a reel as featured, unset all other featured reels
     if (isFeatured === "true" || isFeatured === true) {
       await prisma.reel.updateMany({
         where: { 
           isFeatured: true,
+          placement: reelPlacement,
           id: { not: Number(req.params.id) } // Exclude current reel
         },
         data: { isFeatured: false },
@@ -173,6 +179,7 @@ router.put("/:id", requireRole("admin"), uploadReelFiles.fields([
     if (discountPct !== undefined) {
       updateData.discountPct = discountPct !== null && discountPct !== "" ? Number(discountPct) : null;
     }
+    if (placement !== undefined) updateData.placement = reelPlacement;
     if (isActive !== undefined) updateData.isActive = isActive === "true" || isActive === true;
     if (order !== undefined) updateData.order = order !== null && order !== "" ? Number(order) : 0;
 

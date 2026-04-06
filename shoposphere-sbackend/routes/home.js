@@ -80,6 +80,7 @@ function compactHomeReel(reel) {
     isTrending: reel.isTrending,
     isFeatured: reel.isFeatured,
     discountPct: reel.discountPct,
+    placement: reel.placement,
     product: reel.product ? compactHomeProduct(reel.product) : null,
   };
 }
@@ -139,7 +140,7 @@ router.get("/", publicBrowseRateLimiter, cacheMiddleware(5 * 60 * 1000), async (
         take: HOME_PRODUCT_LIMIT,
       }),
       prisma.reel.findMany({
-        where: { isActive: true },
+        where: { isActive: true, placement: "home" },
         orderBy: { order: "asc" },
         take: HOME_REEL_LIMIT,
         select: {
@@ -152,6 +153,7 @@ router.get("/", publicBrowseRateLimiter, cacheMiddleware(5 * 60 * 1000), async (
           isTrending: true,
           isFeatured: true,
           discountPct: true,
+          placement: true,
           product: {
             select: {
               id: true,

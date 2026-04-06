@@ -74,6 +74,9 @@ export default function ReelList({ reels, onEdit, onDelete }) {
         <div className="text-xs mt-1" style={{ color: 'oklch(50% .02 340)' }}>
           {reel.product?.name || (reel.productId ? `Product #${reel.productId}` : "No product")}
         </div>
+        <div className="text-xs mt-1" style={{ color: 'oklch(50% .02 340)' }}>
+          Placement: {reel.placement === "about" ? "About" : "Home"}
+        </div>
       </div>
 
       {/* Badges */}
