@@ -575,6 +575,37 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
     )));
   };
 
+  const removeVariantNewImage = (id, imageIndex) => {
+    setProductVariants((prev) => prev.map((v) => {
+      if (v.id !== id) return v;
+      const nextImages = [...(v.images || [])];
+      const nextPreviews = [...(v.imagePreviews || [])];
+      const removedPreview = nextPreviews[imageIndex];
+      if (typeof removedPreview === "string" && removedPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(removedPreview);
+      }
+      nextImages.splice(imageIndex, 1);
+      nextPreviews.splice(imageIndex, 1);
+      return {
+        ...v,
+        images: nextImages,
+        imagePreviews: nextPreviews,
+      };
+    }));
+  };
+
+  const removeVariantExistingImage = (id, imageIndex) => {
+    setProductVariants((prev) => prev.map((v) => {
+      if (v.id !== id) return v;
+      const nextExisting = [...(v.existingImages || [])];
+      nextExisting.splice(imageIndex, 1);
+      return {
+        ...v,
+        existingImages: nextExisting,
+      };
+    }));
+  };
+
   const pickColorFromImageClick = (id, e) => {
     const img = e.currentTarget;
     const rect = img.getBoundingClientRect();
@@ -1057,15 +1088,44 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
                             <span className="text-xs text-gray-600">{(variant.colorHex || "#000000").toUpperCase()}</span>
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            {[...(variant.imagePreviews || []), ...(variant.existingImages || [])].map((src, idx) => (
-                              <img
-                                key={`${variant.id}-img-${idx}`}
-                                src={src}
-                                alt={`${variant.colorName || "variant"} preview ${idx + 1}`}
-                                onClick={(e) => pickColorFromImageClick(variant.id, e)}
-                                className="h-20 w-20 object-cover rounded-lg border cursor-crosshair"
-                                style={{ borderColor: "var(--border)" }}
-                              />
+                            {(variant.existingImages || []).map((src, idx) => (
+                              <div key={`${variant.id}-existing-${idx}`} className="relative group">
+                                <img
+                                  src={src}
+                                  alt={`${variant.colorName || "variant"} existing ${idx + 1}`}
+                                  onClick={(e) => pickColorFromImageClick(variant.id, e)}
+                                  className="h-20 w-20 object-cover rounded-lg border cursor-crosshair"
+                                  style={{ borderColor: "var(--border)" }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeVariantExistingImage(variant.id, idx)}
+                                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition"
+                                  aria-label="Remove existing image"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+
+                            {(variant.imagePreviews || []).map((src, idx) => (
+                              <div key={`${variant.id}-new-${idx}`} className="relative group">
+                                <img
+                                  src={src}
+                                  alt={`${variant.colorName || "variant"} new ${idx + 1}`}
+                                  onClick={(e) => pickColorFromImageClick(variant.id, e)}
+                                  className="h-20 w-20 object-cover rounded-lg border cursor-crosshair"
+                                  style={{ borderColor: "var(--border)" }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeVariantNewImage(variant.id, idx)}
+                                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition"
+                                  aria-label="Remove new image"
+                                >
+                                  ×
+                                </button>
+                              </div>
                             ))}
                           </div>
                         </div>

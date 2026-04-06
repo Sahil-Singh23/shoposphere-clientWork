@@ -3,7 +3,7 @@ import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { useRecentlyViewed } from "../context/RecentlyViewedContext";
 import { useUserAuth } from "../context/UserAuthContext";
-import ProductCarouselSection from "../components/ProductCarouselSection";
+import HorizontalProductCarousel from "../components/HorizontalProductCarousel";
 
 export default function Cart() {
   const { recentIds } = useRecentlyViewed();
@@ -252,7 +252,20 @@ export default function Cart() {
         {/* Optional: Recently Viewed */}
         {recentIds.length > 0 && (
           <div className="mt-12">
-            <ProductCarouselSection title="Recently Viewed" productIds={recentIds} />
+            <HorizontalProductCarousel
+              title="Recently Viewed"
+              productIds={recentIds}
+              showCounter={false}
+              showControls={false}
+              sectionClassName="mt-10 max-w-7xl mx-auto px-4"
+              titleClassName="text-xl font-bold font-display mb-0"
+              cardWrapperClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] overflow-hidden"
+              skeletonCount={4}
+              loadingSkeletonClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] rounded-xl animate-pulse"
+              loadingTrackClassName="flex gap-1 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
+              renderTrackClassName="flex gap-2 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
+              hideScrollbar={false}
+            />
           </div>
         )}
       </div>

@@ -40,7 +40,7 @@
   --primary: #000000;
   --primary-foreground: #f8f8f8;
   --secondary: #f3f3f5;
-  --muted: #000000;
+  --muted: #f3f3f5;
   --accent: var(--green-accent);
   --destructive: #7e0004;
   --border: rgba(26, 28, 29, 0.06);

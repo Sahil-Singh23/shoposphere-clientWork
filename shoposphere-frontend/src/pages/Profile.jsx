@@ -3,30 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { API } from "../api";
 import { useUserAuth } from "../context/UserAuthContext";
 
-function StatCard({ label, value, loading }) {
-  return (
-    <div
-      className="rounded-xl border p-5"
-      style={{
-        background: "var(--background)",
-        borderColor: "var(--border)",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.04)",
-      }}
-    >
-      <p className="text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--muted)" }}>
-        {label}
-      </p>
-      {loading ? (
-        <div className="mt-2 h-8 w-12 animate-pulse rounded" style={{ background: "var(--muted)" }} />
-      ) : (
-        <p className="mt-2 text-3xl font-black" style={{ color: "var(--foreground)" }}>
-          {value}
-        </p>
-      )}
-    </div>
-  );
-}
-
 function ActionTile({ to, title, subtitle, glyph }) {
   return (
     <Link
@@ -155,12 +131,6 @@ export default function Profile() {
               Log out
             </button>
           </div>
-        </section>
-
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard label="Saved Addresses" value={stats.addresses} loading={statsLoading} />
-          <StatCard label="Orders" value={stats.orders} loading={statsLoading} />
-          <StatCard label="Wishlist" value={stats.wishlist} loading={statsLoading} />
         </section>
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-3">

@@ -4,13 +4,11 @@ import { API } from "../api";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useToast } from "../context/ToastContext";
-import ProductCard from "../components/ProductCard";
-import RecommendationCarousel from "../components/RecommendationCarousel";
+import HorizontalProductCarousel from "../components/HorizontalProductCarousel";
 import StarRating from "../components/StarRating";
 import { initializeInstagramEmbeds } from "../utils/instagramEmbed";
 import { useUserAuth } from "../context/UserAuthContext";
 import { useRecentlyViewed } from "../context/RecentlyViewedContext";
-import ProductCarouselSection from "../components/ProductCarouselSection";
 import {
   deriveSizeOptionsFromVariants,
   discountPercent,
@@ -521,23 +519,6 @@ export default function ProductDetail() {
     return parts.length ? parts : [text];
   }, [product?.description]);
 
-  const specRows = useMemo(() => {
-    if (!product) return [];
-    const rows = [];
-    const cat = product.categories?.[0]?.name || product.category?.name;
-    if (cat) rows.push({ label: "Category", value: cat });
-    rows.push({
-      label: "Availability",
-      value: stock <= 0 ? "Out of stock" : `${stock} available`,
-    });
-    const variant = Array.isArray(product.variants)
-      ? product.variants.find((x) => x.id === selectedSize?.id)
-      : null;
-    if (variant?.sku) rows.push({ label: "SKU", value: variant.sku });
-    if (selectedWeight) rows.push({ label: "Weight / pack", value: String(selectedWeight) });
-    return rows;
-  }, [product, stock, selectedSize, selectedWeight]);
-
   const completeSetItems = useMemo(() => {
     const rec = recommendedProducts.slice(0, 2);
     if (rec.length >= 2) return rec;
@@ -631,7 +612,7 @@ export default function ProductDetail() {
   }
 
   const mainAspectPadding =
-    activeMedia?.type === "instagram" ? "125%" : activeMedia?.type === "video" ? "56.25%" : "125%";
+    activeMedia?.type === "instagram" ? "125%" : activeMedia?.type === "video" ? "56.25%" : "100%";
 
   return (
     <>
@@ -1023,26 +1004,6 @@ export default function ProductDetail() {
                     </div>
                   </section>
                 ) : null}
-                {specRows.length > 0 ? (
-                  <section className="space-y-6 lg:space-y-8">
-                    <h2 className="pd-headline text-2xl sm:text-3xl font-black uppercase tracking-tighter text-[#1a1c1d]">
-                      Technical specifications
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 border-t border-black/10 pt-8">
-                      {specRows.map((row) => (
-                        <div
-                          key={row.label}
-                          className="flex justify-between gap-4 py-3 border-b border-black/[0.06]"
-                        >
-                          <span className="font-bold text-xs uppercase tracking-widest text-[#474747] shrink-0">
-                            {row.label}
-                          </span>
-                          <span className="text-sm font-medium text-[#1a1c1d] text-right">{row.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                ) : null}
               </div>
               {completeSetItems.length > 0 ? (
                 <div className="lg:col-span-4">
@@ -1244,31 +1205,59 @@ export default function ProductDetail() {
             </section>
 
             {similarProducts.length > 0 ? (
-              <section className="mt-16 px-4 sm:px-6 lg:px-8">
-                <h2 className="pd-headline text-xl sm:text-2xl font-black uppercase tracking-tighter text-[#1a1c1d] mb-6">
-                  Similar products
-                </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-2">
-                  {similarProducts.map((similarProduct) => (
-                    <ProductCard key={similarProduct.id} product={similarProduct} />
-                  ))}
-                </div>
-              </section>
+              <HorizontalProductCarousel
+                title="Similar products"
+                subtitle={`${similarProducts.length} items selected just for you`}
+                products={similarProducts}
+                showCounter
+                showControls
+                sectionClassName="mt-12 lg:mt-14"
+                titleClassName="pd-headline text-xl sm:text-2xl font-black uppercase tracking-tighter text-[#1a1c1d]"
+                subtitleClassName="text-sm mt-1 text-[#474747]"
+                cardWrapperClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] overflow-hidden"
+                skeletonCount={5}
+                loadingSkeletonClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] rounded-lg animate-pulse"
+                loadingTrackClassName="flex gap-2 overflow-x-auto scroll-smooth scrollbar-hide pb-2"
+                renderTrackClassName="flex gap-2 overflow-x-auto scroll-smooth scrollbar-hide pb-2"
+                hideScrollbar
+              />
             ) : null}
 
             {recentIds.length > 0 ? (
-              <ProductCarouselSection
+              <HorizontalProductCarousel
                 title="Recently Viewed"
                 productIds={recentIds}
                 excludeProductId={product?.id}
+                showCounter={false}
+                showControls={false}
+                sectionClassName="mt-10 max-w-7xl mx-auto px-4"
+                titleClassName="text-xl font-bold font-display mb-0"
+                cardWrapperClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] overflow-hidden"
+                skeletonCount={4}
+                loadingSkeletonClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] rounded-xl animate-pulse"
+                loadingTrackClassName="flex gap-1 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
+                renderTrackClassName="flex gap-2 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
+                hideScrollbar={false}
               />
             ) : null}
 
             <div id="product-recommendations" className="scroll-mt-28">
-              <RecommendationCarousel
+              <HorizontalProductCarousel
                 products={recommendedProducts}
                 isLoading={loadingRecommendations}
                 title="Recommended for you"
+                subtitle={`${recommendedProducts.length} items selected just for you`}
+                showCounter
+                showControls
+                sectionClassName="mt-12 lg:mt-14"
+                titleClassName="pd-headline text-xl sm:text-2xl font-black uppercase tracking-tighter text-[#1a1c1d]"
+                subtitleClassName="text-sm mt-1 text-[#474747]"
+                cardWrapperClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] overflow-hidden"
+                skeletonCount={5}
+                loadingSkeletonClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] rounded-lg animate-pulse"
+                loadingTrackClassName="flex gap-2 overflow-x-auto scroll-smooth scrollbar-hide pb-2"
+                renderTrackClassName="flex gap-2 overflow-x-auto scroll-smooth scrollbar-hide pb-2"
+                hideScrollbar
               />
             </div>
           </div>

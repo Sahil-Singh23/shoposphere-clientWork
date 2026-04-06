@@ -3,10 +3,10 @@ import { API } from "../api";
 import { Link, useNavigate } from "react-router-dom";
 import BannerSlider from "../components/BannerSlider";
 import { MemoReelCarousel as ReelCarousel } from "../components/ReelCarousel";
-import ProductCarouselSection from "../components/ProductCarouselSection";
+import HorizontalProductCarousel from "../components/HorizontalProductCarousel";
+import Categories from "../components/Categories";
 import { useRecentlyViewed } from "../context/RecentlyViewedContext";
 import { useWishlist } from "../context/WishlistContext";
-import { useUserAuth } from "../context/UserAuthContext";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { shuffleArray } from "../utils/shuffle";
@@ -39,12 +39,10 @@ export default function Home() {
   const toast = useToast();
   const { recentIds } = useRecentlyViewed();
   const { wishlistItems, isInWishlist, toggleWishlist, togglingId } = useWishlist();
-  const { isAuthenticated } = useUserAuth();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [reels, setReels] = useState([]);
   const [topRatedProducts, setTopRatedProducts] = useState([]);
-  const [buyAgainIds, setBuyAgainIds] = useState([]);
   const [activeCategoryId, setActiveCategoryId] = useState(null);
   const [loading, setLoading] = useState({
     categories: true,
@@ -74,44 +72,14 @@ export default function Home() {
     return () => ac.abort();
   }, []);
 
-  // Lazy: top-rated products
   useEffect(() => {
     const ac = new AbortController();
-    fetch(`${API}/products/top-rated?limit=12`, { signal: ac.signal })
+    fetch(`${API}/products/top-rated?limit=10`, { signal: ac.signal })
       .then((res) => res.json())
       .then((data) => setTopRatedProducts(Array.isArray(data) ? data : []))
       .catch(() => setTopRatedProducts([]));
     return () => ac.abort();
   }, []);
-
-  // Lazy: buy-again product IDs (authenticated)
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setBuyAgainIds([]);
-      return;
-    }
-    const ac = new AbortController();
-    fetch(`${API}/orders/my-orders`, { credentials: "include", signal: ac.signal })
-      .then((res) => res.json())
-      .then((orders) => {
-        if (!Array.isArray(orders)) return;
-        const ids = [];
-        const seen = new Set();
-        for (const order of orders) {
-          const items = order.items || order.orderItems || [];
-          for (const item of items) {
-            const pid = item.productId ?? item.product?.id;
-            if (pid && !seen.has(pid)) {
-              seen.add(pid);
-              ids.push(pid);
-            }
-          }
-        }
-        setBuyAgainIds(ids.slice(0, 12));
-      })
-      .catch(() => setBuyAgainIds([]));
-    return () => ac.abort();
-  }, [isAuthenticated]);
 
   const isInitialLoad = loading.categories || loading.products || loading.reels;
 
@@ -124,6 +92,7 @@ export default function Home() {
   }, [products, activeCategoryId]);
 
   const galleryProducts = useMemo(() => filteredProducts.slice(0, 24), [filteredProducts]);
+  const homeProductsCarousel = useMemo(() => products.slice(0, 10), [products]);
 
   const quickAddLanding = useCallback(
     async (product) => {
@@ -340,114 +309,7 @@ export default function Home() {
                   View all
                 </Link>
               </div>
-              <div className="space-y-3 sm:space-y-4">
-                <div className="grid grid-cols-2 auto-rows-[170px] gap-3 sm:gap-4 md:hidden">
-                  {categories.slice(0, 3).map((cat, idx) => {
-                    const collectionNumber = String(idx + 1).padStart(2, "0");
-                    return (
-                      <Link
-                        key={cat.id}
-                        to={`/category/${cat.slug}`}
-                        className={[
-                          "relative isolate overflow-hidden rounded-t-[38px] rounded-b-sm border border-[#dce3f0]/45 bg-[#eef1f8]",
-                          "shadow-[0_18px_50px_rgba(44,51,61,0.12)]",
-                          "transition-transform duration-300 hover:scale-105",
-                          idx === 0 ? "col-span-2 row-span-2" : "",
-                          idx === 1 ? "col-span-1 row-span-2" : "",
-                          idx === 2 ? "col-span-1 row-span-2" : "",
-                        ].join(" ")}
-                      >
-                        {cat.imageUrl ? (
-                          <img src={cat.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center p-4 bg-[#d9deeb]">
-                            <img src="/logo.png" alt="" className="h-11 w-auto object-contain opacity-55" />
-                          </div>
-                        )}
-
-                        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/18 to-black/5" />
-
-                        <div className="absolute top-5 right-5 h-9 w-9 rounded-full bg-white/14 backdrop-blur-sm border border-white/30 text-white flex items-center justify-center">
-                          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M7 17L17 7M9 7h8v8" />
-                          </svg>
-                        </div>
-
-                        <div className="absolute inset-x-5 bottom-5 text-white">
-                          <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.35em] text-white/85 mb-1.5">
-                            {collectionNumber} / Collection
-                          </p>
-                          <p className="home-headline text-3xl sm:text-4xl font-extrabold tracking-tight leading-[0.9] uppercase">
-                            {cat.name}
-                          </p>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-
-                {categories.length > 3 ? (
-                  <div className="grid grid-cols-2 gap-1 md:hidden">
-                    {categories.slice(3).map((cat) => {
-                      return (
-                        <Link
-                          key={cat.id}
-                          to={`/category/${cat.slug}`}
-                          className="relative isolate overflow-hidden aspect-4/5 rounded-sm border border-[#dce3f0]/45 bg-[#eef1f8] shadow-[0_14px_36px_rgba(44,51,61,0.12)] transition-transform duration-300 hover:scale-105"
-                        >
-                          {cat.imageUrl ? (
-                            <img src={cat.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-                          ) : (
-                            <div className="absolute inset-0 flex items-center justify-center p-4 bg-[#d9deeb]">
-                              <img src="/logo.png" alt="" className="h-10 w-auto object-contain opacity-55" />
-                            </div>
-                          )}
-
-                          <div className="absolute inset-0 bg-linear-to-t from-black/55 via-black/10 to-black/0" />
-
-                          <div className="absolute inset-x-3 bottom-3 text-white">
-                            <p className="font-extrabold tracking-tight leading-none uppercase text-lg sm:text-xl">
-                              {cat.name}
-                            </p>
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                ) : null}
-
-                <div className="hidden md:grid md:grid-cols-6 gap-3 sm:gap-4">
-                  {categories.map((cat, idx) => {
-                    const collectionNumber = String(idx + 1).padStart(2, "0");
-                    return (
-                      <Link
-                        key={cat.id}
-                        to={`/category/${cat.slug}`}
-                        className="relative isolate overflow-hidden aspect-3/4 rounded-sm border border-[#dce3f0]/45 bg-[#eef1f8] shadow-[0_14px_36px_rgba(44,51,61,0.12)] transition-transform duration-300 hover:scale-105"
-                      >
-                        {cat.imageUrl ? (
-                          <img src={cat.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center p-4 bg-[#d9deeb]">
-                            <img src="/logo.png" alt="" className="h-10 w-auto object-contain opacity-55" />
-                          </div>
-                        )}
-
-                        <div className="absolute inset-0 bg-linear-to-t from-black/55 via-black/10 to-black/0" />
-
-                        <div className="absolute inset-x-3 bottom-3 text-white">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/85 mb-1">
-                            {collectionNumber} / Collection
-                          </p>
-                          <p className="home-headline text-xl sm:text-2xl font-extrabold leading-none uppercase">
-                            {cat.name}
-                          </p>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
+              <Categories categories={categories} selectedCategoryId={activeCategoryId} />
             </section>
           ) : null}
         </main>
@@ -456,20 +318,59 @@ export default function Home() {
 
         {topRatedProducts.length > 0 && (
           <div className="py-4">
-            <ProductCarouselSection title="Top" products={topRatedProducts} />
+            <HorizontalProductCarousel
+              title="Top rated"
+              products={topRatedProducts}
+              showCounter={false}
+              showControls={false}
+              sectionClassName="mt-10 max-w-7xl mx-auto px-4"
+              titleClassName="text-xl font-bold font-display mb-0"
+              cardWrapperClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] overflow-hidden"
+              skeletonCount={4}
+              loadingSkeletonClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] rounded-xl animate-pulse"
+              loadingTrackClassName="flex gap-1 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
+              renderTrackClassName="flex gap-2 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
+              hideScrollbar={false}
+            />
+          </div>
+        )}
+
+        {homeProductsCarousel.length > 0 && (
+          <div className="py-4">
+            <HorizontalProductCarousel
+              title="Products"
+              products={homeProductsCarousel}
+              showCounter={false}
+              showControls={false}
+              sectionClassName="mt-10 max-w-7xl mx-auto px-4"
+              titleClassName="text-xl font-bold font-display mb-0"
+              cardWrapperClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] overflow-hidden"
+              skeletonCount={4}
+              loadingSkeletonClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] rounded-xl animate-pulse"
+              loadingTrackClassName="flex gap-1 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
+              renderTrackClassName="flex gap-2 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
+              hideScrollbar={false}
+            />
           </div>
         )}
         {recentIds.length > 0 && (
           <div className="py-4">
-            <ProductCarouselSection title="Recently viewed" productIds={recentIds} />
+            <HorizontalProductCarousel
+              title="Recently viewed"
+              productIds={recentIds}
+              showCounter={false}
+              showControls={false}
+              sectionClassName="mt-10 max-w-7xl mx-auto px-4"
+              titleClassName="text-xl font-bold font-display mb-0"
+              cardWrapperClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] overflow-hidden"
+              skeletonCount={4}
+              loadingSkeletonClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] rounded-xl animate-pulse"
+              loadingTrackClassName="flex gap-1 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
+              renderTrackClassName="flex gap-2 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
+              hideScrollbar={false}
+            />
           </div>
         )}
-        {buyAgainIds.length > 0 && (
-          <div className="py-4">
-            <ProductCarouselSection title="Buy again" productIds={buyAgainIds} />
-          </div>
-        )}
-
 
 
       {/* Secondary Banner Section - Between Gifts and Reels */}
@@ -478,9 +379,19 @@ export default function Home() {
       {/* Personalized: From Your Wishlist */}
       {wishlistItems.length > 0 && (
         <div>
-          <ProductCarouselSection
+          <HorizontalProductCarousel
             title="From Your Wishlist"
             products={wishlistItems.map((item) => item.product).filter(Boolean)}
+            showCounter={false}
+            showControls={false}
+            sectionClassName="mt-10 max-w-7xl mx-auto px-4"
+            titleClassName="text-xl font-bold font-display mb-0"
+            cardWrapperClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] overflow-hidden"
+            skeletonCount={4}
+            loadingSkeletonClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] rounded-xl animate-pulse"
+            loadingTrackClassName="flex gap-1 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
+            renderTrackClassName="flex gap-2 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
+            hideScrollbar={false}
           />
         </div>
       )}

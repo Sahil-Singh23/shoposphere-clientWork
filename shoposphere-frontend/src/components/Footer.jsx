@@ -10,19 +10,19 @@ export default function Footer() {
   };
 
     return (
-    <footer className="mt-20 bg-design-secondary border-t border-design">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <footer className="mt-14 bg-design-secondary border-t border-design">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-[1.4rem]">
 
         {/* Brand Section - Left Side */}
-        <div className="mb-6">
-          <div className="flex items-start gap-3">
+        <div className="">
+          <div className="flex items-start gap-2">
             <img
               src="/logo.png"
               alt="shoposphere"
-              className="h-12 w-auto"
+              className="h-[2.1rem] w-auto"
             />
             <div className="flex flex-col">
-              <h3 className="font-display text-sm font-extrabold tracking-wide mb-1 text-design-foreground">
+              <h3 className="font-display text-xs font-extrabold tracking-wide mb-0.5 text-design-foreground">
                 shoposphere
               </h3>
               {/* Instagram Link */}
@@ -30,7 +30,7 @@ export default function Footer() {
                 href=""
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm transition-all duration-300 hover:translate-x-1 text-design-foreground hover:opacity-80"
+                className="inline-flex items-center gap-1.5 text-xs transition-all duration-300 hover:translate-x-1 text-design-foreground hover:opacity-80"
               >
                 
               </a>
@@ -39,12 +39,11 @@ export default function Footer() {
         </div>
 
         {/* 2-Column Grid - Works on Mobile Too */}
-        <div className="grid grid-cols-2 gap-2 md:gap-12 mb-6">
+        <div className="grid grid-cols-2 gap-1.5 md:gap-8 mb-2">
 
           {/* Quick Links - Left Side */}
           <div>
-            <h4 className="font-display font-bold mb-4 text-lg text-design-foreground">Quick Links</h4>
-            <div className="space-y-2 text-sm">
+            <div className="space-y-1 text-xs">
               {Object.entries(linkMap).map(([label, path]) => (
                 <Link
                   key={label}
@@ -59,9 +58,9 @@ export default function Footer() {
 
           {/* Connect With Us - Right Side */}
           <div>
-            <h4 className="font-display font-bold mb-4 text-lg text-design-foreground">Connect With Us</h4>
+            <h4 className="font-display font-bold mb-2 text-base text-design-foreground">Connect With Us</h4>
 
-            <div className="space-y-2 text-sm text-design-foreground">
+            <div className="space-y-1 text-xs text-design-foreground">
               <p className="flex items-start gap-2">
                 <span className="mt-0.5">📍</span>
                 <span></span>
@@ -92,12 +91,12 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-design pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-design-foreground">
+        <div className="border-t border-design pt-4 flex flex-col md:flex-row justify-between items-center gap-3">
+          <p className="text-xs text-design-foreground">
             © {new Date().getFullYear()} shoposphere. All rights reserved.
           </p>
 
-          <div className="flex items-center gap-2 text-sm text-design-foreground">
+          <div className="flex items-center gap-1.5 text-xs text-design-foreground">
             <span>Powered by</span>
             <a
               href="https://www.instagram.com/qyverra.it?igsh=MTV5a2pzdGNxNjIzdg=="

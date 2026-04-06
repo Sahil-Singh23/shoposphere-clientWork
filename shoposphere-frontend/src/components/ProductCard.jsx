@@ -1,10 +1,11 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { memo, useMemo, useState } from "react";
 import { useToast } from "../context/ToastContext";
 
 function ProductCard({ product, compact = false }) {
+  const navigate = useNavigate();
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist, togglingId } = useWishlist();
   const toast = useToast();
@@ -141,7 +142,7 @@ function ProductCard({ product, compact = false }) {
         return;
       }
 
-      window.location.href = `/product/${product.id}`;
+      navigate(`/product/${product.id}`);
     } finally {
       setIsAdding(false);
     }
