@@ -160,6 +160,9 @@ export default function ProductDetail() {
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
   const [submitReviewLoading, setSubmitReviewLoading] = useState(false);
+  const [isSizeChartOpen, setIsSizeChartOpen] = useState(false);
+  const [sizeChartTab, setSizeChartTab] = useState("chart");
+  const [sizeUnit, setSizeUnit] = useState("in");
 
   const isWishlisted = product ? isInWishlist(product.id) : false;
   const isWishlistToggling = product && togglingId === product.id;
@@ -539,6 +542,33 @@ export default function ProductDetail() {
     return (Number(selectedSize.price) * quantity).toLocaleString("en-IN");
   }, [product, selectedWeight, selectedSize, quantity]);
 
+  const tshirtSizeRows = useMemo(
+    () => [
+      { size: "XS", in: { chest: "36", shoulder: "16.25", length: "26" }, cm: { chest: "91.4", shoulder: "41", length: "66" } },
+      { size: "S", in: { chest: "38", shoulder: "16.75", length: "27" }, cm: { chest: "96", shoulder: "42", length: "69" } },
+      { size: "M", in: { chest: "40", shoulder: "17.25", length: "28" }, cm: { chest: "101", shoulder: "43", length: "71" } },
+      { size: "L", in: { chest: "42", shoulder: "17.75", length: "29" }, cm: { chest: "106", shoulder: "44", length: "74" } },
+      { size: "XL", in: { chest: "45", shoulder: "18.75", length: "30" }, cm: { chest: "114", shoulder: "48", length: "76" } },
+      { size: "XXL", in: { chest: "47", shoulder: "19.25", length: "30.5" }, cm: { chest: "119", shoulder: "49", length: "77" } },
+      { size: "XXXL", in: { chest: "49", shoulder: "19.75", length: "30.5" }, cm: { chest: "124", shoulder: "50", length: "77" } },
+    ],
+    []
+  );
+
+  const selectedSizeRows = useMemo(
+    () => tshirtSizeRows.map((row) => ({ size: row.size, ...(sizeUnit === "in" ? row.in : row.cm) })),
+    [sizeUnit, tshirtSizeRows]
+  );
+
+  useEffect(() => {
+    if (!isSizeChartOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isSizeChartOpen]);
+
   const priceBlock = useMemo(() => {
     const { selling, mrp, showFrom } = resolvedPricing;
     if (selling == null) {
@@ -845,6 +875,17 @@ export default function ProductDetail() {
                     <div className="space-y-4" id="product-size-guide">
                       <div className="flex justify-between items-center gap-2">
                         <h3 className="text-xs font-bold uppercase tracking-widest text-[#1a1c1d]">Select size</h3>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSizeChartTab("chart");
+                            setSizeUnit("in");
+                            setIsSizeChartOpen(true);
+                          }}
+                          className="text-[11px] font-bold uppercase tracking-wide text-[#474747] hover:text-black"
+                        >
+                          Size Chart
+                        </button>
                       </div>
                       <div className="grid grid-cols-6 gap-3">
                         {sizeOptions.map((size) => {
@@ -1276,6 +1317,201 @@ export default function ProductDetail() {
           </div>
         </div>
       </div>
+
+      {isSizeChartOpen ? (
+        <div className="fixed inset-0 z-70">
+          <button
+            type="button"
+            aria-label="Close size chart"
+            onClick={() => setIsSizeChartOpen(false)}
+            className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+          />
+
+          <aside
+            className="fixed right-0 top-0 h-full w-full max-w-md shadow-2xl flex flex-col"
+            style={{ background: "var(--background)", color: "var(--foreground)" }}
+          >
+            <div className="flex justify-between items-center p-6 border-b" style={{ borderColor: "var(--border)" }}>
+              <h2 className="pd-headline text-2xl font-black tracking-tight">Size Chart - T-Shirts</h2>
+              <button
+                type="button"
+                onClick={() => setIsSizeChartOpen(false)}
+                className="p-2 rounded-full transition-colors"
+                style={{ color: "var(--foreground)", background: "transparent" }}
+                aria-label="Close size chart"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex border-b" style={{ borderColor: "var(--border)" }}>
+              <button
+                type="button"
+                onClick={() => setSizeChartTab("chart")}
+                className={`flex-1 py-4 font-bold flex items-center justify-center gap-2 transition-colors ${
+                  sizeChartTab === "chart"
+                    ? "border-b-2"
+                    : "text-[#474747] hover:text-black"
+                }`}
+                style={sizeChartTab === "chart" ? { color: "var(--green-accent)", borderColor: "var(--green-accent)" } : undefined}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z" />
+                  <path d="m14.5 12.5 2-2" />
+                  <path d="m11.5 9.5 2-2" />
+                  <path d="m8.5 6.5 2-2" />
+                  <path d="m17.5 15.5 2-2" />
+                </svg>
+                Size Chart
+              </button>
+              <button
+                type="button"
+                onClick={() => setSizeChartTab("measure")}
+                className={`flex-1 py-4 font-bold flex items-center justify-center gap-2 transition-colors ${
+                  sizeChartTab === "measure"
+                    ? "border-b-2"
+                    : "text-[#474747] hover:text-black"
+                }`}
+                style={sizeChartTab === "measure" ? { color: "var(--green-accent)", borderColor: "var(--green-accent)" } : undefined}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 16v-4" />
+                  <path d="M12 8h.01" />
+                </svg>
+                How To Measure
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {sizeChartTab === "chart" ? (
+                <div className="space-y-5">
+                  <div className="inline-flex p-1 rounded-xl border" style={{ background: "var(--secondary)", borderColor: "var(--border)" }}>
+                    <button
+                      type="button"
+                      onClick={() => setSizeUnit("in")}
+                      className={`px-4 py-2 text-[11px] font-bold rounded-lg transition-colors ${
+                        sizeUnit === "in"
+                          ? "shadow-sm"
+                          : "text-[#474747]"
+                      }`}
+                      style={sizeUnit === "in" ? { background: "var(--card-white)", color: "var(--foreground)" } : undefined}
+                    >
+                      SIZE IN INCHES
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSizeUnit("cm")}
+                      className={`px-4 py-2 text-[11px] font-bold rounded-lg transition-colors ${
+                        sizeUnit === "cm"
+                          ? "shadow-sm"
+                          : "text-[#474747]"
+                      }`}
+                      style={sizeUnit === "cm" ? { background: "var(--card-white)", color: "var(--foreground)" } : undefined}
+                    >
+                      SIZE IN CM
+                    </button>
+                  </div>
+
+                  <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "var(--card-white)" }}>
+                    <table className="w-full text-sm">
+                      <thead style={{ background: "var(--secondary)" }}>
+                        <tr>
+                          <th className="text-left px-4 py-3 font-bold">Size</th>
+                          <th className="text-left px-4 py-3 font-bold">Chest</th>
+                          <th className="text-left px-4 py-3 font-bold">Shoulder</th>
+                          <th className="text-left px-4 py-3 font-bold">Length</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedSizeRows.map((row) => (
+                          <tr key={row.size} className="border-t" style={{ borderColor: "var(--border)" }}>
+                            <td className="px-4 py-3 font-bold">{row.size}</td>
+                            <td className="px-4 py-3">{row.chest}</td>
+                            <td className="px-4 py-3">{row.shoulder}</td>
+                            <td className="px-4 py-3">{row.length}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div
+                    className="p-4 rounded-xl text-sm leading-relaxed flex gap-3"
+                    style={{ background: "var(--green-bg-subtle)", color: "var(--green-accent)" }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5" aria-hidden>
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 16v-4" />
+                      <path d="M12 8h.01" />
+                    </svg>
+                    <p>The measurements in the size chart are based on body measurements, not the garment.</p>
+                  </div>
+
+                  <div className="aspect-square rounded-2xl flex items-center justify-center p-8 border-2 border-dashed" style={{ background: "var(--secondary)", borderColor: "var(--border)" }}>
+                    <svg viewBox="0 0 100 100" className="w-full h-full text-[#9aa0ad]" aria-hidden>
+                      <path fill="currentColor" opacity="0.1" d="M20,20 L30,20 L30,10 L70,10 L70,20 L80,20 L95,40 L85,45 L80,40 L80,90 L20,90 L20,40 L15,45 L5,40 Z" />
+                      <line x1="30" y1="12" x2="70" y2="12" stroke="currentColor" strokeWidth="1" strokeDasharray="2" />
+                      <text x="50" y="8" fontSize="4" textAnchor="middle" fill="currentColor">Shoulder</text>
+                      <line x1="20" y1="45" x2="80" y2="45" stroke="currentColor" strokeWidth="1" strokeDasharray="2" />
+                      <text x="50" y="42" fontSize="4" textAnchor="middle" fill="currentColor">Chest</text>
+                      <line x1="22" y1="10" x2="22" y2="90" stroke="currentColor" strokeWidth="1" strokeDasharray="2" />
+                      <text x="18" y="50" fontSize="4" textAnchor="middle" fill="currentColor" transform="rotate(-90 18,50)">
+                        Length
+                      </text>
+                    </svg>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="font-bold mb-2 flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full text-white flex items-center justify-center text-xs" style={{ background: "var(--green-accent)" }}>1</span>
+                        Shoulder
+                      </h4>
+                      <p className="text-sm pl-8 text-[#474747]">
+                        Place the measuring tape on shoulder seam and measure it edge to edge.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold mb-2 flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full text-white flex items-center justify-center text-xs" style={{ background: "var(--green-accent)" }}>2</span>
+                        Chest
+                      </h4>
+                      <p className="text-sm pl-8 text-[#474747]">
+                        Lift your arms slightly and measure around your body, crossing over the fullest part of your bust.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-bold mb-2 flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full text-white flex items-center justify-center text-xs" style={{ background: "var(--green-accent)" }}>3</span>
+                        Length
+                      </h4>
+                      <p className="text-sm pl-8 text-[#474747]">
+                        Measure from highest point of the shoulder to the bottom edge.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t" style={{ borderColor: "var(--border)", background: "var(--secondary)" }}>
+              <button
+                type="button"
+                onClick={() => setIsSizeChartOpen(false)}
+                className="w-full bg-black text-white font-bold py-4 rounded-xl hover:bg-[#2f2f2f] transition-colors"
+              >
+                CLOSE
+              </button>
+            </div>
+          </aside>
+        </div>
+      ) : null}
     </>
   );
 }
