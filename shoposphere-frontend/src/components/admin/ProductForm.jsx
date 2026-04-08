@@ -55,6 +55,19 @@ function parseColorImageUrls(color) {
   return [];
 }
 
+function moveArrayItem(items, fromIndex, toIndex) {
+  const next = [...items];
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, moved);
+  return next;
+}
+
+function buildVariantGalleryOrder(existingImages = [], newImages = []) {
+  const existing = existingImages.map((_, index) => ({ kind: "existing", index }));
+  const fresh = newImages.map((_, index) => ({ kind: "new", index }));
+  return [...existing, ...fresh];
+}
+
 export default function ProductForm({ product, categories, onSave, onCancel }) {
   const toast = useToast();
   const isEdit = isEditProduct(product);
@@ -71,8 +84,9 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
   });
   const [productVariants, setProductVariants] = useState([]);
   const [variantMode, setVariantMode] = useState("color");
-  const [images, setImages] = useState([]);
   const [existingImages, setExistingImages] = useState([]);
+  const [variantImageDropActiveId, setVariantImageDropActiveId] = useState(null);
+  const [variantDraggedImage, setVariantDraggedImage] = useState(null);
   const [videos, setVideos] = useState([]);
   const [existingVideos, setExistingVideos] = useState([]);
   const [instagramEmbeds, setInstagramEmbeds] = useState([]);
@@ -81,6 +95,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
   const [generatingDescription, setGeneratingDescription] = useState(false);
   const [descriptionLanguage, setDescriptionLanguage] = useState("English");
   const formRef = useRef(null);
+  const variantImageInputRefs = useRef({});
   const isSubmittingRef = useRef(false);
   const initialSnapshotRef = useRef("");
 
@@ -96,9 +111,9 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
       existingImages,
       selectedCategories,
       // For new images, treat any selection as "dirty"
-      imagesSelectedCount: images.length,
+      imagesSelectedCount: productVariants.reduce((sum, v) => sum + (v.images?.length || 0), 0),
     });
-  }, [formData, productVariants, existingImages, selectedCategories, images.length]);
+  }, [formData, productVariants, existingImages, selectedCategories]);
 
   const isDirty = initialSnapshotRef.current !== "" && snapshot !== initialSnapshotRef.current;
 
@@ -125,6 +140,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
       const grouped = new Map();
 
       for (const color of colorRows) {
+        const parsedImages = parseColorImageUrls(color);
         grouped.set(`color-${color.id}`, {
           id: `color-${color.id}`,
           colorId: color.id,
@@ -132,7 +148,8 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
           colorHex: color.hexCode || "#000000",
           images: [],
           imagePreviews: [],
-          existingImages: parseColorImageUrls(color),
+          existingImages: parsedImages,
+          galleryOrder: buildVariantGalleryOrder(parsedImages, []),
           sizeStocks: {},
           collapsed: false,
         });
@@ -141,6 +158,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
       for (const v of variantRows) {
         const key = v?.colorId != null ? `color-${v.colorId}` : `no-color-${v.sizeLabel || v.id}`;
         if (!grouped.has(key)) {
+          const parsedImages = parseColorImageUrls(v?.color);
           grouped.set(key, {
             id: key,
             colorId: v?.colorId ?? null,
@@ -148,7 +166,8 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
             colorHex: v?.color?.hexCode || "#000000",
             images: [],
             imagePreviews: [],
-            existingImages: parseColorImageUrls(v?.color),
+            existingImages: parsedImages,
+            galleryOrder: buildVariantGalleryOrder(parsedImages, []),
             sizeStocks: {},
             collapsed: false,
           });
@@ -160,7 +179,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
       }
 
       setProductVariants([...grouped.values()]);
-      setExistingImages(product.images || []);
+  setExistingImages(product.images || []);
       setExistingVideos(product.videos && Array.isArray(product.videos) ? product.videos : []);
       setInstagramEmbeds(product.instagramEmbeds && Array.isArray(product.instagramEmbeds) ? product.instagramEmbeds : []);
       // Handle both old (categoryId) and new (categories) format for backward compatibility
@@ -185,7 +204,6 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
         ...emptyHighlightFormFields(),
       });
       setProductVariants([]);
-      setImages([]);
       setExistingImages([]);
       setInstagramEmbeds([]);
       setSelectedCategories([]);
@@ -242,6 +260,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
                   colorName: c?.name || "",
                   colorHex: c?.hexCode || "#000000",
                   sizeStocks,
+                  galleryOrder: buildVariantGalleryOrder(parseColorImageUrls(c), []),
                 };
               })
             : [],
@@ -346,13 +365,27 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
                 const existingPhotoUrls = Array.isArray(b.existingImages)
                   ? b.existingImages.filter(Boolean)
                   : [];
-                const uploadedPhotoTokens = [];
-                for (const file of b.images || []) {
-                  uploadedPhotoTokens.push(`__COLOR_UPLOAD_${uploadIndex}__`);
-                  formDataToSend.append("colorPhotos", file);
-                  uploadIndex += 1;
+                const galleryOrder = Array.isArray(b.galleryOrder) && b.galleryOrder.length > 0
+                  ? b.galleryOrder
+                  : buildVariantGalleryOrder(existingPhotoUrls, b.images || []);
+
+                const photoUrls = [];
+                for (const item of galleryOrder) {
+                  if (item.kind === "existing") {
+                    const url = existingPhotoUrls[item.index];
+                    if (url) photoUrls.push(url);
+                    continue;
+                  }
+
+                  const file = (b.images || [])[item.index];
+                  if (file) {
+                    const token = `__COLOR_UPLOAD_${uploadIndex}__`;
+                    photoUrls.push(token);
+                    formDataToSend.append("colorPhotos", file);
+                    uploadIndex += 1;
+                  }
                 }
-                const photoUrls = [...existingPhotoUrls, ...uploadedPhotoTokens];
+
                 return {
                   key: b.id,
                   name: b.colorName.trim(),
@@ -430,9 +463,10 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
           ...emptyHighlightFormFields(),
         });
         setProductVariants([]);
-        setImages([]);
         setExistingImages([]);
         setSelectedCategories([]);
+        setVariantDraggedImage(null);
+        setVariantImageDropActiveId(null);
         initialSnapshotRef.current = "";
       } else {
         toast.error(data.error || data.message || "Failed to save product");
@@ -464,8 +498,9 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
       ...emptyHighlightFormFields(),
     });
     setProductVariants([]);
-    setImages([]);
     setExistingImages([]);
+    setVariantDraggedImage(null);
+    setVariantImageDropActiveId(null);
     setVideos([]);
     setExistingVideos([]);
     setSelectedCategories([]);
@@ -499,6 +534,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
         images: [],
         imagePreviews: [],
         existingImages: [],
+        galleryOrder: [],
         collapsed: false,
       },
     ]);
@@ -520,7 +556,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
     setProductVariants((prev) => prev.map((v) => {
       if (v.id !== id) return v;
       const nextSizeStocks = { ...(v.sizeStocks || {}) };
-      if (checked) nextSizeStocks[sizeLabel] = nextSizeStocks[sizeLabel] ?? "0";
+      if (checked) nextSizeStocks[sizeLabel] = nextSizeStocks[sizeLabel] ?? "9999";
       else delete nextSizeStocks[sizeLabel];
       return { ...v, sizeStocks: nextSizeStocks };
     }));
@@ -550,13 +586,35 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
     const previews = selected.map((f) => URL.createObjectURL(f));
     setProductVariants((prev) => prev.map((v) => (
       v.id === id
-        ? {
-            ...v,
-            images: [...(v.images || []), ...selected],
-            imagePreviews: [...(v.imagePreviews || []), ...previews],
-          }
+        ? (() => {
+            const nextImages = [...(v.images || []), ...selected];
+            const nextPreviews = [...(v.imagePreviews || []), ...previews];
+            return {
+              ...v,
+              images: nextImages,
+              imagePreviews: nextPreviews,
+              galleryOrder: buildVariantGalleryOrder(v.existingImages || [], nextImages),
+            };
+          })()
         : v
     )));
+  };
+
+  const reorderVariantGallery = (variantId, fromPosition, toPosition) => {
+    if (fromPosition === toPosition) return;
+    setProductVariants((prev) => prev.map((v) => {
+      if (v.id !== variantId) return v;
+      const order = Array.isArray(v.galleryOrder) && v.galleryOrder.length > 0
+        ? v.galleryOrder
+        : buildVariantGalleryOrder(v.existingImages || [], v.images || []);
+      if (fromPosition < 0 || toPosition < 0 || fromPosition >= order.length || toPosition >= order.length) {
+        return v;
+      }
+      return {
+        ...v,
+        galleryOrder: moveArrayItem(order, fromPosition, toPosition),
+      };
+    }));
   };
 
   const removeVariantNewImage = (id, imageIndex) => {
@@ -564,16 +622,24 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
       if (v.id !== id) return v;
       const nextImages = [...(v.images || [])];
       const nextPreviews = [...(v.imagePreviews || [])];
+      const nextOrder = (v.galleryOrder || []).filter((item) => !(item.kind === "new" && item.index === imageIndex));
       const removedPreview = nextPreviews[imageIndex];
       if (typeof removedPreview === "string" && removedPreview.startsWith("blob:")) {
         URL.revokeObjectURL(removedPreview);
       }
       nextImages.splice(imageIndex, 1);
       nextPreviews.splice(imageIndex, 1);
+      const normalizedOrder = nextOrder.map((item) => {
+        if (item.kind === "new" && item.index > imageIndex) {
+          return { ...item, index: item.index - 1 };
+        }
+        return item;
+      });
       return {
         ...v,
         images: nextImages,
         imagePreviews: nextPreviews,
+        galleryOrder: normalizedOrder,
       };
     }));
   };
@@ -582,10 +648,18 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
     setProductVariants((prev) => prev.map((v) => {
       if (v.id !== id) return v;
       const nextExisting = [...(v.existingImages || [])];
+      const nextOrder = (v.galleryOrder || []).filter((item) => !(item.kind === "existing" && item.index === imageIndex));
       nextExisting.splice(imageIndex, 1);
+      const normalizedOrder = nextOrder.map((item) => {
+        if (item.kind === "existing" && item.index > imageIndex) {
+          return { ...item, index: item.index - 1 };
+        }
+        return item;
+      });
       return {
         ...v,
         existingImages: nextExisting,
+        galleryOrder: normalizedOrder,
       };
     }));
   };
@@ -647,7 +721,10 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
         payload.productId = product.id;
         payload.forceRegenerate = forceRegenerate;
       }
-      const firstImageUrl = existingImages?.length > 0 ? existingImages[0] : null;
+      const firstVariantWithImage = productVariants.find(
+        (v) => (v.existingImages?.length || 0) > 0 || (v.imagePreviews?.length || 0) > 0
+      );
+      const firstImageUrl = firstVariantWithImage?.existingImages?.[0] || null;
       if (firstImageUrl) {
         payload.imageUrl = firstImageUrl.startsWith("http") ? firstImageUrl : `${API}${firstImageUrl.startsWith("/") ? "" : "/"}${firstImageUrl}`;
       }
@@ -884,7 +961,7 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
           <textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="w-full px-4 py-2.5 border border-neutral-200 rounded-lg text-neutral-900 bg-white focus:outline-none focus:ring-2 focus:ring-neutral-400/40 focus:border-neutral-300 transition min-h-[7rem]"
+            className="w-full px-4 py-2.5 border border-neutral-200 rounded-lg text-neutral-900 bg-white focus:outline-none focus:ring-2 focus:ring-neutral-400/40 focus:border-neutral-300 transition min-h-28"
             rows="5"
             required
             placeholder="Describe the product for shoppers…"
@@ -1031,13 +1108,63 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
                       <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1">Upload Product Images For This Variant *</label>
                         <input
+                          ref={(el) => { variantImageInputRefs.current[variant.id] = el; }}
                           type="file"
                           multiple
                           accept="image/*"
                           disabled={!variant.colorName?.trim()}
-                          onChange={(e) => handleVariantImagesChange(variant.id, e.target.files)}
-                          className="text-sm"
+                          onChange={(e) => {
+                            handleVariantImagesChange(variant.id, e.target.files);
+                            e.target.value = "";
+                          }}
+                          className="hidden"
                         />
+                        <div
+                          onDragEnter={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (!variant.colorName?.trim()) return;
+                            setVariantImageDropActiveId(variant.id);
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (!variant.colorName?.trim()) return;
+                            setVariantImageDropActiveId(variant.id);
+                          }}
+                          onDragLeave={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (variantImageDropActiveId === variant.id) {
+                              setVariantImageDropActiveId(null);
+                            }
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setVariantImageDropActiveId(null);
+                            if (!variant.colorName?.trim()) return;
+                            handleVariantImagesChange(variant.id, e.dataTransfer.files);
+                          }}
+                          className={`border-2 border-dashed rounded-xl p-4 text-center transition ${
+                            variantImageDropActiveId === variant.id
+                              ? "border-pink-500 bg-pink-50"
+                              : "border-gray-200 bg-white hover:border-pink-300"
+                          }`}
+                        >
+                          <p className="text-xs text-gray-700">
+                            Drag and drop images here, or{" "}
+                            <button
+                              type="button"
+                              disabled={!variant.colorName?.trim()}
+                              onClick={() => variantImageInputRefs.current[variant.id]?.click()}
+                              className="font-semibold underline disabled:opacity-50"
+                            >
+                              browse
+                            </button>
+                          </p>
+                          <p className="text-[11px] text-gray-500 mt-1">Drag thumbnails below to set top image (first one).</p>
+                        </div>
                         {!variant.colorName?.trim() && (
                           <p className="text-xs text-amber-700 mt-1">Enter colour name first, then upload variant images.</p>
                         )}
@@ -1056,45 +1183,63 @@ export default function ProductForm({ product, categories, onSave, onCancel }) {
                             <span className="text-xs text-gray-600">{(variant.colorHex || "#000000").toUpperCase()}</span>
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            {(variant.existingImages || []).map((src, idx) => (
-                              <div key={`${variant.id}-existing-${idx}`} className="relative group">
-                                <img
-                                  src={src}
-                                  alt={`${variant.colorName || "variant"} existing ${idx + 1}`}
-                                  onClick={(e) => pickColorFromImageClick(variant.id, e)}
-                                  className="h-20 w-20 object-cover rounded-lg border cursor-crosshair"
-                                  style={{ borderColor: "var(--border)" }}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => removeVariantExistingImage(variant.id, idx)}
-                                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition"
-                                  aria-label="Remove existing image"
+                            {(Array.isArray(variant.galleryOrder) && variant.galleryOrder.length > 0
+                              ? variant.galleryOrder
+                              : buildVariantGalleryOrder(variant.existingImages || [], variant.images || [])
+                            ).map((entry, position) => {
+                              const src = entry.kind === "existing"
+                                ? (variant.existingImages || [])[entry.index]
+                                : (variant.imagePreviews || [])[entry.index];
+                              if (!src) return null;
+                              return (
+                                <div
+                                  key={`${variant.id}-${entry.kind}-${entry.index}-${position}`}
+                                  draggable
+                                  onDragStart={(e) => {
+                                    setVariantDraggedImage({ variantId: variant.id, fromPosition: position });
+                                    e.dataTransfer.effectAllowed = "move";
+                                  }}
+                                  onDragEnd={() => setVariantDraggedImage(null)}
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                  }}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (variantDraggedImage?.variantId === variant.id) {
+                                      reorderVariantGallery(variant.id, variantDraggedImage.fromPosition, position);
+                                    }
+                                    setVariantDraggedImage(null);
+                                  }}
+                                  className={`relative group cursor-grab active:cursor-grabbing ${position === 0 ? "ring-2 ring-pink-400 rounded-lg" : ""}`}
                                 >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-
-                            {(variant.imagePreviews || []).map((src, idx) => (
-                              <div key={`${variant.id}-new-${idx}`} className="relative group">
-                                <img
-                                  src={src}
-                                  alt={`${variant.colorName || "variant"} new ${idx + 1}`}
-                                  onClick={(e) => pickColorFromImageClick(variant.id, e)}
-                                  className="h-20 w-20 object-cover rounded-lg border cursor-crosshair"
-                                  style={{ borderColor: "var(--border)" }}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => removeVariantNewImage(variant.id, idx)}
-                                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition"
-                                  aria-label="Remove new image"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
+                                  {position === 0 && (
+                                    <span className="absolute top-1 left-1 z-10 px-1.5 py-0.5 rounded bg-black/80 text-white text-[10px] font-semibold">
+                                      Top
+                                    </span>
+                                  )}
+                                  <img
+                                    src={src}
+                                    alt={`${variant.colorName || "variant"} ${position + 1}`}
+                                    onClick={(e) => pickColorFromImageClick(variant.id, e)}
+                                    className="h-20 w-20 object-cover rounded-lg border cursor-crosshair"
+                                    style={{ borderColor: "var(--border)" }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (entry.kind === "existing") removeVariantExistingImage(variant.id, entry.index);
+                                      else removeVariantNewImage(variant.id, entry.index);
+                                    }}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition"
+                                    aria-label="Remove image"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}

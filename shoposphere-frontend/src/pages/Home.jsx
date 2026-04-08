@@ -141,17 +141,17 @@ export default function Home() {
     <div className="min-h-screen fade-in home-landing pb-24 md:pb-12">
       <>
         <main>
-          <section className="px-6 sm:px-8 mb-10 max-w-7xl mx-auto pt-2 md:pt-4" aria-label="Shoposphere intro">
-            <h1 className="home-headline text-3xl sm:text-5xl font-extrabold tracking-tighter text-[#2c333d] leading-none mb-2">
+          <section className="px-6 sm:px-8 mb-5 max-w-7xl mx-auto pt-2 md:pt-4" aria-label="Shoposphere intro">
+            <h1 className="home-headline text-2xl font-extrabold tracking-tighter text-[#2c333d] leading-none mb-2">
               Shoposphere
             </h1>
-            <p className="home-headline text-lg sm:text-2xl font-bold tracking-tight text-[#5e5e5e] leading-tight">
+            <p className="home-headline text-lg font-bold tracking-tight text-[#5e5e5e] leading-tight">
               Curated for you — quit the clutter
             </p>
           </section>
 
           {categories.length > 0 ? (
-            <section className="px-6 sm:px-7 mb-10 max-w-7xl mx-auto overflow-x-auto hide-scrollbar-home" aria-label="Browse by category">
+            <section className="px-6 sm:px-7 mb-5 max-w-7xl mx-auto overflow-x-auto hide-scrollbar-home" aria-label="Browse by category">
               <div className="flex gap-3 whitespace-nowrap pb-1">
                 <button
                   type="button"
@@ -190,7 +190,7 @@ export default function Home() {
               <h2 className="home-headline text-2xl sm:text-3xl font-bold tracking-tight text-[#2c333d]">Trending</h2>
             </div>
             <div
-              className="flex overflow-x-auto hide-scrollbar-home gap-2 sm:gap-2 px-6 sm:px-20 pb-2"
+              className="flex overflow-x-auto hide-scrollbar-home gap-1 sm:gap-1 px-6 sm:px-20 pb-2"
               style={{ WebkitOverflowScrolling: "touch" }}
             >
               {isInitialLoad
@@ -329,7 +329,7 @@ export default function Home() {
               skeletonCount={4}
               loadingSkeletonClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] rounded-xl animate-pulse"
               loadingTrackClassName="flex gap-1 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
-              renderTrackClassName="flex gap-2 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
+              renderTrackClassName="flex gap-1 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
               hideScrollbar={false}
             />
           </div>
@@ -348,7 +348,7 @@ export default function Home() {
               skeletonCount={4}
               loadingSkeletonClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] rounded-xl animate-pulse"
               loadingTrackClassName="flex gap-1 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
-              renderTrackClassName="flex gap-2 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
+              renderTrackClassName="flex gap-1 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
               hideScrollbar={false}
             />
           </div>
@@ -366,7 +366,7 @@ export default function Home() {
               skeletonCount={4}
               loadingSkeletonClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] rounded-xl animate-pulse"
               loadingTrackClassName="flex gap-1 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
-              renderTrackClassName="flex gap-2 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
+              renderTrackClassName="flex gap-1 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
               hideScrollbar={false}
             />
           </div>
@@ -390,7 +390,7 @@ export default function Home() {
             skeletonCount={4}
             loadingSkeletonClassName="shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] rounded-xl animate-pulse"
             loadingTrackClassName="flex gap-1 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
-            renderTrackClassName="flex gap-2 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
+            renderTrackClassName="flex gap-1 overflow-x-auto scroll-smooth scrollbar-thin pb-2"
             hideScrollbar={false}
           />
         </div>

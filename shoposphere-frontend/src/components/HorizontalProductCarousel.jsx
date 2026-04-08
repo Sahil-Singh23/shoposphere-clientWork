@@ -20,8 +20,8 @@ export default function HorizontalProductCarousel({
   titleClassName = "pd-headline text-xl sm:text-2xl font-black uppercase tracking-tighter text-[#1a1c1d]",
   subtitleClassName = "text-sm mt-1 text-[#474747]",
   loadingSkeletonClassName = "shrink-0 basis-[calc((100%-0.5rem)/2)] lg:basis-[calc((100%-2rem)/5)] rounded-lg animate-pulse",
-  loadingTrackClassName = "flex gap-2 overflow-x-auto scroll-smooth scrollbar-hide pb-2",
-  renderTrackClassName = "flex gap-2 overflow-x-auto scroll-smooth scrollbar-hide pb-2",
+  loadingTrackClassName = "flex gap-1 overflow-x-auto scroll-smooth scrollbar-hide pb-1",
+  renderTrackClassName = "flex gap-1 overflow-x-auto scroll-smooth scrollbar-hide pb-1",
   hideScrollbar = true,
   className = "",
 }) {

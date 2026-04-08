@@ -29,7 +29,7 @@ export default function Categories({
       ) : null}
 
       <div className="relative z-0 space-y-3 sm:space-y-4">
-        <div className="grid grid-cols-2 auto-rows-[170px] gap-1 sm:gap-2 md:hidden">
+        <div className="grid grid-cols-2 auto-rows-[170px] gap-1 sm:gap-1 md:hidden">
           {categories.slice(0, 3).map((category, idx) => {
             const collectionNumber = String(idx + 1).padStart(2, "0");
             const isActive = hasSelection && Number(selectedCategoryId) === Number(category.id);

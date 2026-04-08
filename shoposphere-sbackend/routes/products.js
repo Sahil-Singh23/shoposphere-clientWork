@@ -215,6 +215,36 @@ async function resolveColorPhotos(colorsToCreate = [], colorPhotoFiles = []) {
   });
 }
 
+function resolveOrderedImageUrls({ existingImages, uploadedImageUrls = [], imageOrder }) {
+  const orderedItems = parseJsonArray(imageOrder);
+  if (!orderedItems.length) {
+    return null;
+  }
+
+  const orderedUrls = [];
+  for (const item of orderedItems) {
+    if (item?.type === "existing") {
+      const value = String(item.value || "").trim();
+      if (value) orderedUrls.push(value);
+      continue;
+    }
+
+    if (item?.type === "new") {
+      const idx = Number(item.index);
+      if (Number.isInteger(idx) && idx >= 0 && idx < uploadedImageUrls.length) {
+        orderedUrls.push(uploadedImageUrls[idx]);
+      }
+    }
+  }
+
+  if (orderedUrls.length > 0) {
+    return orderedUrls.filter(Boolean);
+  }
+
+  const fallbackExisting = parseJsonArray(existingImages);
+  return [...fallbackExisting, ...uploadedImageUrls].filter(Boolean);
+}
+
 // Get all products (public) - Cached 5 min. Supports ?ids=1,2,3 for bulk fetch (preserves order).
 router.get("/", productListRateLimiter, cacheMiddleware(5 * 60 * 1000), async (req, res) => {
   try {
@@ -472,20 +502,15 @@ router.post("/", requireRole("admin"), uploadProductMedia, async (req, res) => {
       collarStyle,
       lengthDetail,
       countryOfOrigin,
+      imageOrder,
     } = req.body;
 
     // Upload images; for duplicate/create, existingImages can provide initial URLs
-    let imageUrls = [];
-    if (existingImages) {
-      try {
-        const parsed = typeof existingImages === "string" ? JSON.parse(existingImages) : existingImages;
-        if (Array.isArray(parsed)) imageUrls = parsed;
-      } catch (_) {}
-    }
     const imageFiles = req.files?.images || [];
+    const uploadedImageUrls = [];
     for (const file of imageFiles) {
       const url = await getImageUrl(file);
-      imageUrls.push(url);
+      uploadedImageUrls.push(url);
     }
     const colorPhotoFiles = req.files?.colorPhotos || [];
     // Upload videos; existingVideos can provide initial URLs (e.g. duplicate)
@@ -522,8 +547,14 @@ router.post("/", requireRole("admin"), uploadProductMedia, async (req, res) => {
       return res.status(400).json({ error: "At least one variant is required" });
     }
 
+    const orderedImageUrls = resolveOrderedImageUrls({
+      existingImages,
+      uploadedImageUrls,
+      imageOrder,
+    });
+    let imageUrls = orderedImageUrls ?? [];
     if (colorsToCreate.length > 0) {
-      imageUrls = [...new Set(colorsToCreate.flatMap((c) => c.photoUrls || []).filter(Boolean))];
+      imageUrls = imageUrls.length > 0 ? imageUrls : [...new Set(colorsToCreate.flatMap((c) => c.photoUrls || []).filter(Boolean))];
     }
     const categoryIdsArray = parseJsonArray(categoryIds);
 
@@ -660,6 +691,7 @@ router.put("/:id", requireRole("admin"), uploadProductMedia, async (req, res) =>
       collarStyle,
       lengthDetail,
       countryOfOrigin,
+      imageOrder,
     } = req.body;
 
     const existingProduct = await prisma.product.findUnique({
@@ -671,11 +703,11 @@ router.put("/:id", requireRole("admin"), uploadProductMedia, async (req, res) =>
     }
 
     // Handle images
-    let imageUrls = parseJsonArray(existingImages);
     const imageFiles = req.files?.images || [];
+    const uploadedImageUrls = [];
     for (const file of imageFiles) {
       const url = await getImageUrl(file);
-      imageUrls.push(url);
+      uploadedImageUrls.push(url);
     }
     const colorPhotoFiles = req.files?.colorPhotos || [];
     // Handle videos
@@ -706,8 +738,14 @@ router.put("/:id", requireRole("admin"), uploadProductMedia, async (req, res) =>
       return res.status(400).json({ error: "At least one variant is required" });
     }
 
+    const orderedImageUrls = resolveOrderedImageUrls({
+      existingImages,
+      uploadedImageUrls,
+      imageOrder,
+    });
+    let imageUrls = orderedImageUrls ?? [...parseJsonArray(existingImages), ...uploadedImageUrls];
     if (colorsToCreate.length > 0) {
-      imageUrls = [...new Set(colorsToCreate.flatMap((c) => c.photoUrls || []).filter(Boolean))];
+      imageUrls = imageUrls.length > 0 ? imageUrls : [...new Set(colorsToCreate.flatMap((c) => c.photoUrls || []).filter(Boolean))];
     }
     const skuSet = new Set();
     for (const v of variantsToCreate) {
@@ -874,14 +912,30 @@ router.post("/reorder", requireRole("admin"), async (req, res) => {
 // Delete product (Admin only)
 router.delete("/:id", requireRole("admin"), async (req, res) => {
   try {
+    const productId = Number(req.params.id);
+
+    if (!productId || Number.isNaN(productId)) {
+      return res.status(400).json({ error: "Invalid product id" });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.orderItem.deleteMany({ where: { productId } });
+      await tx.cartItem.deleteMany({ where: { productId } });
+      await tx.wishlist.deleteMany({ where: { productId } });
+      await tx.review.deleteMany({ where: { productId } });
+      await tx.productVariant.deleteMany({ where: { productId } });
+      await tx.productColor.deleteMany({ where: { productId } });
+      await tx.productCategory.deleteMany({ where: { productId } });
+      await tx.reel.deleteMany({ where: { productId } });
+      await tx.product.delete({ where: { id: productId } });
+    });
+
     // Invalidate products cache on delete
     invalidateCache("/products");
-    
-    await prisma.product.delete({
-      where: { id: Number(req.params.id) },
-    });
+
     res.json({ message: "Product deleted successfully" });
   } catch (error) {
+    console.error("Delete product error:", error);
     res.status(500).json({ error: error.message });
   }
 });

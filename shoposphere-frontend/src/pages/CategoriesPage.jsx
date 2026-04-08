@@ -151,7 +151,7 @@ function CategoryFilterSortPanel({
           <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--foreground-muted)" }}>
             Filter
           </p>
-          <label className="flex cursor-pointer items-center gap-2 text-sm" style={{ color: "var(--foreground)" }}>
+          <label className="flex cursor-pointer items-center gap-1 text-sm" style={{ color: "var(--foreground)" }}>
             <input
               type="checkbox"
               className="h-4 w-4 rounded border shrink-0"
@@ -281,7 +281,7 @@ function CategoryFilterSortPanel({
             {SORT_OPTIONS.map((opt) => (
               <label
                 key={opt.value}
-                className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-[var(--secondary)]"
+                className="flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-[var(--secondary)]"
                 style={{ color: "var(--foreground)" }}
               >
                 <input
@@ -528,7 +528,7 @@ export default function CategoriesPage() {
             />
             {products.length > 0 ? (
               displayedProducts.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1">
                   {displayedProducts.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
@@ -595,7 +595,7 @@ export default function CategoriesPage() {
             />
             {products.length > 0 ? (
               displayedProducts.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-1">
                   {displayedProducts.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
