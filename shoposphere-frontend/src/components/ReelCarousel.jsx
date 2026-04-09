@@ -75,6 +75,8 @@ export default function ReelCarousel({ reels }) {
   const [viewedIds, setViewedIds] = useState(() => new Set());
   const [videoReady, setVideoReady] = useState(() => new Set());
   const [videoError, setVideoError] = useState(() => new Set());
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const allReels = Array.isArray(reels) ? reels : [];
   
@@ -234,7 +236,14 @@ export default function ReelCarousel({ reels }) {
     const el = scrollerRef.current;
     if (!el || baseCount === 0) return;
 
+    const checkScroll = () => {
+      const { scrollLeft, scrollWidth, clientWidth } = el;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    };
+
     const onScroll = () => {
+      checkScroll();
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => {
         const cardWidth = cardWidthRef.current || el.querySelector("[data-reel-card='1']")?.getBoundingClientRect().width || 0;
@@ -252,11 +261,23 @@ export default function ReelCarousel({ reels }) {
     };
 
     el.addEventListener("scroll", onScroll, { passive: true });
+    checkScroll();
     return () => {
       el.removeEventListener("scroll", onScroll);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [baseCount]);
+
+  const scrollByCard = (direction) => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const firstCard = el.querySelector("[data-reel-card='1']");
+    const cardWidth = firstCard?.getBoundingClientRect().width || 320;
+    const styles = window.getComputedStyle(el);
+    const gap = parseFloat(styles.columnGap || styles.gap || "0") || 0;
+    const delta = Math.max(220, Math.round(cardWidth + gap));
+    el.scrollBy({ left: direction === "left" ? -delta : delta, behavior: "smooth" });
+  };
 
   const setMutedFor = (id, nextMuted) => {
     setMutedById((prev) => {
@@ -652,16 +673,44 @@ export default function ReelCarousel({ reels }) {
 
       {/* Regular Reels Feed */}
       {baseCount > 0 && (
-        <div
-          ref={scrollerRef}
-          className="flex gap-4 overflow-x-auto pb-4 px-2 snap-x snap-mandatory"
-          style={{
-            WebkitOverflowScrolling: "touch",
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-          }}
-        >
-          {base.map((reel, i) => renderReelCard(reel, i, false))}
+        <div className="ss-slider-shell">
+          {canScrollLeft ? (
+            <button
+              type="button"
+              onClick={() => scrollByCard("left")}
+              className="ss-slider-arrow ss-slider-arrow--left"
+              aria-label="Scroll reels left"
+            >
+              <svg className="ss-slider-arrow__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+          ) : null}
+
+          <div
+            ref={scrollerRef}
+            className="flex gap-4 overflow-x-auto pb-4 px-2 snap-x snap-mandatory"
+            style={{
+              WebkitOverflowScrolling: "touch",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }}
+          >
+            {base.map((reel, i) => renderReelCard(reel, i, false))}
+          </div>
+
+          {canScrollRight ? (
+            <button
+              type="button"
+              onClick={() => scrollByCard("right")}
+              className="ss-slider-arrow ss-slider-arrow--right"
+              aria-label="Scroll reels right"
+            >
+              <svg className="ss-slider-arrow__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          ) : null}
         </div>
       )}
     </div>

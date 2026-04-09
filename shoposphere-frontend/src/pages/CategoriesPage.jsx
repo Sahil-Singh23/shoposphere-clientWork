@@ -308,6 +308,11 @@ export default function CategoriesPage() {
   const trendingFilter = searchParams.get("trending") === "true";
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [showingHint, setShowingHint] = useState("");
+  const hintTimeoutRef = useRef(null);
+  const categoryProductsRef = useRef(null);
+  const allProductsRef = useRef(null);
+  const [productsFadeKey, setProductsFadeKey] = useState(0);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -371,6 +376,38 @@ export default function CategoriesPage() {
     setInStockOnly(false);
   }, [slug, selectedCategory?.id, trendingFilter]);
 
+  const scrollToSectionWithOffset = (el) => {
+    if (!el) return;
+    const nav = document.querySelector("nav");
+    const navH = nav ? nav.getBoundingClientRect().height : 0;
+    const extra = 12; // breathing room under sticky navbar
+    const top = el.getBoundingClientRect().top + window.scrollY - navH - extra;
+    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current);
+    if (slug && selectedCategory?.name) {
+      setShowingHint(`Showing: ${selectedCategory.name}`);
+    } else if (!slug) {
+      setShowingHint(trendingFilter ? "Showing: Trending products" : "Showing: All products");
+    } else {
+      setShowingHint("");
+    }
+    hintTimeoutRef.current = setTimeout(() => setShowingHint(""), 2200);
+    return () => {
+      if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current);
+    };
+  }, [slug, selectedCategory?.name, trendingFilter]);
+
+  // When a user navigates to a category, land directly on products grid
+  useEffect(() => {
+    const target = slug ? categoryProductsRef.current : allProductsRef.current;
+    if (!target) return;
+    const t = setTimeout(() => scrollToSectionWithOffset(target), 160);
+    return () => clearTimeout(t);
+  }, [slug, selectedCategory?.id, trendingFilter]);
+
   useEffect(() => {
     fetch(`${API}/categories`)
       .then((res) => res.json())
@@ -413,6 +450,7 @@ export default function CategoriesPage() {
   const fetchCategoryProducts = async (categorySlug, trending = false) => {
     setLoading(true);
     try {
+      const sessionKey = `shoposphere:catOrder:${categorySlug}:${trending ? "trending" : "all"}`;
       const params = new URLSearchParams();
       params.append("category", categorySlug);
       if (trending) {
@@ -424,7 +462,37 @@ export default function CategoriesPage() {
       const filteredData = trending 
         ? (Array.isArray(data) ? data.filter(p => p.isTrending) : [])
         : (Array.isArray(data) ? data : []);
-      setProducts(shuffleArray(filteredData));
+
+      // Shuffle once per session for consistency (optional premium feel)
+      let nextList = filteredData;
+      try {
+        const stored = sessionStorage.getItem(sessionKey);
+        if (stored) {
+          const orderIds = JSON.parse(stored);
+          if (Array.isArray(orderIds) && orderIds.length) {
+            const byId = new Map(nextList.map((p) => [String(p.id), p]));
+            const ordered = [];
+            for (const id of orderIds) {
+              const hit = byId.get(String(id));
+              if (hit) {
+                ordered.push(hit);
+                byId.delete(String(id));
+              }
+            }
+            // append any new products not in stored order
+            ordered.push(...byId.values());
+            nextList = ordered;
+          }
+        } else {
+          nextList = shuffleArray(nextList);
+          sessionStorage.setItem(sessionKey, JSON.stringify(nextList.map((p) => p.id)));
+        }
+      } catch {
+        nextList = shuffleArray(nextList);
+      }
+
+      setProducts(nextList);
+      setProductsFadeKey((k) => k + 1);
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {
@@ -435,6 +503,7 @@ export default function CategoriesPage() {
   const fetchAllProducts = async (trending = false) => {
     setLoading(true);
     try {
+      const sessionKey = `shoposphere:catOrder:__all__:${trending ? "trending" : "all"}`;
       const params = new URLSearchParams();
       if (trending) {
         params.append("trending", "true");
@@ -446,7 +515,36 @@ export default function CategoriesPage() {
       const filteredData = trending 
         ? (Array.isArray(data) ? data.filter(p => p.isTrending) : [])
         : (Array.isArray(data) ? data : []);
-      setProducts(shuffleArray(filteredData));
+
+      // Shuffle once per session for consistency (optional premium feel)
+      let nextList = filteredData;
+      try {
+        const stored = sessionStorage.getItem(sessionKey);
+        if (stored) {
+          const orderIds = JSON.parse(stored);
+          if (Array.isArray(orderIds) && orderIds.length) {
+            const byId = new Map(nextList.map((p) => [String(p.id), p]));
+            const ordered = [];
+            for (const id of orderIds) {
+              const hit = byId.get(String(id));
+              if (hit) {
+                ordered.push(hit);
+                byId.delete(String(id));
+              }
+            }
+            ordered.push(...byId.values());
+            nextList = ordered;
+          }
+        } else {
+          nextList = shuffleArray(nextList);
+          sessionStorage.setItem(sessionKey, JSON.stringify(nextList.map((p) => p.id)));
+        }
+      } catch {
+        nextList = shuffleArray(nextList);
+      }
+
+      setProducts(nextList);
+      setProductsFadeKey((k) => k + 1);
     } catch (error) {
       console.error("Error fetching products:", error);
       setProducts([]);
@@ -484,11 +582,19 @@ export default function CategoriesPage() {
 
         {/* Products for Selected Category */}
         {selectedCategory && slug && (
-          <div className="relative z-10 mt-12">
+          <div ref={categoryProductsRef} className="relative z-10 mt-12">
             <div className="mb-8">
               <h3 className="font-display text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>
                 {selectedCategory.name}
               </h3>
+              {showingHint ? (
+                <div
+                  className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold mb-3 transition-opacity duration-200"
+                  style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}
+                >
+                  {showingHint}
+                </div>
+              ) : null}
               {selectedCategory.description && (
                 <p className="text-lg mb-4" style={{ color: "var(--foreground-muted)" }}>
                   {selectedCategory.description}
@@ -526,9 +632,25 @@ export default function CategoriesPage() {
               onPriceFilterMinChange={setPriceFilterMin}
               onPriceFilterMaxChange={setPriceFilterMax}
             />
-            {products.length > 0 ? (
+            {loading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <div
+                    key={`cat-skel-${i}`}
+                    className="bg-white border border-black/5 shadow-[0_10px_30px_rgba(17,24,39,0.06)] overflow-hidden animate-pulse"
+                  >
+                    <div className="aspect-4/5 bg-slate-100" />
+                    <div className="px-4 py-4">
+                      <div className="h-4 w-3/4 rounded bg-slate-100" />
+                      <div className="mt-2 h-4 w-1/3 rounded bg-slate-100" />
+                      <div className="mt-4 h-10 w-full rounded bg-slate-100" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : products.length > 0 ? (
               displayedProducts.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1">
+                <div key={productsFadeKey} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1 fade-in">
                   {displayedProducts.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
@@ -555,11 +677,19 @@ export default function CategoriesPage() {
 
         {/* All products when no category slug is selected (e.g. /categories) */}
         {!slug && (
-          <div className="relative z-10 mt-12">
+          <div ref={allProductsRef} className="relative z-10 mt-12">
             <div className="mb-8">
               <h3 className="font-display text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>
                 {trendingFilter ? "Trending Products" : "All Products"}
               </h3>
+              {showingHint ? (
+                <div
+                  className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold transition-opacity duration-200"
+                  style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}
+                >
+                  {showingHint}
+                </div>
+              ) : null}
 
             </div>
 
@@ -593,9 +723,25 @@ export default function CategoriesPage() {
               onPriceFilterMinChange={setPriceFilterMin}
               onPriceFilterMaxChange={setPriceFilterMax}
             />
-            {products.length > 0 ? (
+            {loading ? (
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-1">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <div
+                    key={`all-skel-${i}`}
+                    className="bg-white border border-black/5 shadow-[0_10px_30px_rgba(17,24,39,0.06)] overflow-hidden animate-pulse"
+                  >
+                    <div className="aspect-4/5 bg-slate-100" />
+                    <div className="px-4 py-4">
+                      <div className="h-4 w-3/4 rounded bg-slate-100" />
+                      <div className="mt-2 h-4 w-1/3 rounded bg-slate-100" />
+                      <div className="mt-4 h-10 w-full rounded bg-slate-100" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : products.length > 0 ? (
               displayedProducts.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-1">
+                <div key={productsFadeKey} className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-1 fade-in">
                   {displayedProducts.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}

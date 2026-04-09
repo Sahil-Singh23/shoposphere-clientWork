@@ -181,15 +181,14 @@ export default function HorizontalProductCarousel({
           ))}
         </div>
       ) : list.length > 0 ? (
-        <div className={`relative group ${containerClassName}`}>
+        <div className={`ss-slider-shell ${containerClassName}`.trim()}>
           {showControls && canScrollLeft ? (
             <button
               onClick={() => handleScroll("left")}
-              className="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20 h-9 w-9 sm:h-10 sm:w-10 rounded-full shadow-lg transition-transform duration-200 hover:scale-110 flex items-center justify-center"
-              style={{ backgroundColor: "rgba(17,17,17,0.92)", color: "white" }}
+              className="ss-slider-arrow ss-slider-arrow--left"
               aria-label="Scroll left"
             >
-              <svg className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg className="ss-slider-arrow__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <polyline points="15 18 9 12 15 6"></polyline>
               </svg>
             </button>
@@ -215,11 +214,10 @@ export default function HorizontalProductCarousel({
           {showControls && canScrollRight ? (
             <button
               onClick={() => handleScroll("right")}
-              className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-20 h-9 w-9 sm:h-10 sm:w-10 rounded-full shadow-lg transition-transform duration-200 hover:scale-110 flex items-center justify-center"
-              style={{ backgroundColor: "rgba(17,17,17,0.92)", color: "white" }}
+              className="ss-slider-arrow ss-slider-arrow--right"
               aria-label="Scroll right"
             >
-              <svg className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg className="ss-slider-arrow__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <polyline points="9 18 15 12 9 6"></polyline>
               </svg>
             </button>

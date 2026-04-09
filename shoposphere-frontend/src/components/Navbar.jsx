@@ -15,6 +15,7 @@ export default function Navbar() {
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [allProducts, setAllProducts] = useState([]);
   const [searchSuggestions, setSearchSuggestions] = useState([]);
@@ -22,6 +23,7 @@ export default function Navbar() {
   const typedElementRef = useRef(null);
   const typedInstanceRef = useRef(null);
   const searchInputRef = useRef(null);
+  const mobileSearchInputRef = useRef(null);
   const suggestionsRef = useRef(null);
 
   const isActive = (path) => location.pathname === path;
@@ -93,8 +95,8 @@ export default function Navbar() {
       if (
         suggestionsRef.current &&
         !suggestionsRef.current.contains(event.target) &&
-        searchInputRef.current &&
-        !searchInputRef.current.contains(event.target)
+        ((searchInputRef.current && !searchInputRef.current.contains(event.target)) ||
+          (mobileSearchInputRef.current && !mobileSearchInputRef.current.contains(event.target)))
       ) {
         setShowSuggestions(false);
       }
@@ -105,6 +107,33 @@ export default function Navbar() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Mobile search overlay: focus + escape + scroll lock
+  useEffect(() => {
+    if (!isMobileSearchOpen) return;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const t = setTimeout(() => {
+      mobileSearchInputRef.current?.focus?.();
+    }, 50);
+
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setIsMobileSearchOpen(false);
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      clearTimeout(t);
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isMobileSearchOpen]);
 
   // Initialize Typed.js for search bar
   useEffect(() => {
@@ -150,14 +179,14 @@ export default function Navbar() {
       style={{ borderColor: "var(--border)" }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 md:h-20">
+        <div className="flex items-center justify-between h-14 md:h-20">
           <div className="flex items-center gap-3 lg:gap-3 min-w-0 flex-1">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-3 group shrink-0">
               <img
                 src="/logo.png"
                 alt="shoposphere"
-                className="h-10 md:h-11 w-auto shrink-0 object-contain transition-transform duration-300 group-hover:scale-105"
+                className="h-9 md:h-11 w-auto shrink-0 object-contain transition-transform duration-300 group-hover:scale-105"
               />
             </Link>
 
@@ -205,7 +234,7 @@ export default function Navbar() {
           </div>
 
           {/* Right-side actions */}
-          <div className="flex items-center gap-3 ml-3 lg:ml-4 shrink-0">
+          <div className="flex items-center gap-2.5 ml-3 lg:ml-4 shrink-0">
 
             {/* User auth: Login/Signup or user menu */}
             <div className="relative hidden md:block">
@@ -377,9 +406,28 @@ export default function Navbar() {
                 )}
               </div>
             </div>
+
+            {/* Mobile search icon (visible < md) */}
+            <button
+              type="button"
+              className="md:hidden p-2 rounded-full transition-all duration-300 active:scale-95"
+              style={{ backgroundColor: "var(--secondary)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--background)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "var(--secondary)"; }}
+              aria-label="Open search"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                setIsMobileSearchOpen(true);
+              }}
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: "var(--foreground)" }} aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+
             <Link
               to={isAuthenticated ? "/profile" : "/login"}
-              className="p-2.5 rounded-full transition-all duration-300 active:scale-95"
+              className="p-2 rounded-full transition-all duration-300 active:scale-95"
               style={{ backgroundColor: 'var(--secondary)' }}
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--background)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--secondary)'; }}
@@ -439,7 +487,7 @@ export default function Navbar() {
             {/* Mobile Menu Button (visible < md) */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg transition-all duration-300 active:scale-95"
+              className="md:hidden p-1.5 rounded-lg transition-all duration-300 active:scale-95"
               style={{ color: 'var(--foreground-muted)' }}
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--secondary)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
@@ -455,183 +503,177 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile Search (Nykaa-style) */}
-        <div className="md:hidden pb-3">
-          <div className="relative">
-            <button
-              type="button"
-              aria-label="Search"
-              onClick={() => {
-                if (searchQuery.trim()) {
-                  navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-                  setShowSuggestions(false);
-                }
-              }}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 z-30"
-            >
-              <svg
-                className="w-4 h-4"
-                style={{ color: "var(--foreground-muted)" }}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </button>
+        {/* Mobile search overlay (preferred UX) */}
+        <div
+          className={`md:hidden fixed inset-0 z-[60] transition-opacity duration-200 ${isMobileSearchOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+          aria-hidden={!isMobileSearchOpen}
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/30"
+            aria-label="Close search"
+            onClick={() => {
+              setIsMobileSearchOpen(false);
+              setShowSuggestions(false);
+            }}
+          />
 
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                if (typedInstanceRef.current && e.target.value) {
-                  typedInstanceRef.current.stop();
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && searchQuery.trim()) {
-                  navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-                  setShowSuggestions(false);
-                } else if (e.key === "Escape") {
-                  setShowSuggestions(false);
-                }
-              }}
-              placeholder=""
-              className="w-full rounded-full pl-10 pr-4 py-2.5 text-sm border transition-all duration-300"
-                style={{
-                  backgroundColor: "var(--background)",
-                  borderColor: "var(--border)",
-                  color: searchQuery ? "var(--foreground)" : "transparent",
-                }}
-              onFocus={() => {
-                // reveal text + pause typing
-                if (searchInputRef.current) {
-                  searchInputRef.current.style.color = "var(--foreground)";
-                }
-                if (typedInstanceRef.current) typedInstanceRef.current.stop();
-                if (searchSuggestions.length > 0) setShowSuggestions(true);
-              }}
-              onBlur={() => {
-                setTimeout(() => {
-                  setShowSuggestions(false);
-                  if (!searchQuery) {
-                    if (typedInstanceRef.current) typedInstanceRef.current.start();
-                  }
-                }, 200);
-              }}
-            />
+          <div
+            className={`absolute left-0 right-0 top-0 border-b transition-transform duration-200 ${isMobileSearchOpen ? "translate-y-0" : "-translate-y-2"}`}
+            style={{ backgroundColor: "var(--background)", borderColor: "var(--border)" }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Search"
+          >
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="p-2 rounded-full active:scale-95"
+                  style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}
+                  aria-label="Close"
+                  onClick={() => {
+                    setIsMobileSearchOpen(false);
+                    setShowSuggestions(false);
+                  }}
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
 
-            {!searchQuery && isMobile && (
-              <span
-                ref={typedElementRef}
-                className="absolute left-10 top-1/2 -translate-y-1/2 pointer-events-none text-sm z-20"
-                style={{ color: "var(--foreground-muted)" }}
-              ></span>
-            )}
-
-            {/* Mobile Suggestions */}
-            {showSuggestions && searchSuggestions.length > 0 && (
-              <div
-                ref={suggestionsRef}
-                className="absolute top-full left-0 mt-2 w-full rounded-lg shadow-xl border z-50 max-h-80 overflow-y-auto"
-                style={{ borderColor: "var(--border)", backgroundColor: "var(--background)" }}
-              >
-                <div className="p-2">
-                  <div
-                    className="text-xs font-semibold px-3 py-2"
-                    style={{ color: "var(--foreground-muted)" }}
-                  >
-                    Suggestions
-                  </div>
-                  {searchSuggestions.map((product) => {
-                    const images = product.images
-                      ? Array.isArray(product.images)
-                        ? product.images
-                        : JSON.parse(product.images)
-                      : [];
-                    return (
-                      <button
-                        key={product.id}
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          setShowSuggestions(false);
-                          setSearchQuery("");
-                          navigate(`/product/${product.id}`);
-                        }}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group"
-                        style={{ backgroundColor: "transparent" }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = "var(--secondary)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = "transparent";
-                        }}
-                      >
-                        {images.length > 0 ? (
-                          <img
-                            src={images[0]}
-                            alt={product.name}
-                            className="w-12 h-12 object-cover rounded-lg"
-                          />
-                        ) : (
-                          <div
-                            className="w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden"
-                            style={{ backgroundColor: "var(--secondary)" }}
-                          >
-                            <img src="/logo.png" alt="shoposphere" className="h-6 w-auto max-w-9 object-contain opacity-50" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div
-                            className="font-semibold text-sm truncate"
-                            style={{ color: "var(--foreground)" }}
-                          >
-                            {product.name}
-                          </div>
-                          {product.category && (
-                            <div
-                              className="text-xs truncate"
-                              style={{ color: "var(--foreground-muted)" }}
-                            >
-                              {product.category.name}
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      if (!searchQuery.trim()) return;
-                      setShowSuggestions(false);
-                      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+                <div className="relative flex-1">
+                  <input
+                    ref={mobileSearchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => {
+                      if (searchSuggestions.length > 0) setShowSuggestions(true);
                     }}
-                    className="block px-3 py-2 rounded-lg text-sm font-semibold text-center transition-colors"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && searchQuery.trim()) {
+                        navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+                        setShowSuggestions(false);
+                        setIsMobileSearchOpen(false);
+                      } else if (e.key === "Escape") {
+                        setIsMobileSearchOpen(false);
+                        setShowSuggestions(false);
+                      }
+                    }}
+                    placeholder="Search products"
+                    className="w-full rounded-full pl-11 pr-11 py-3 text-sm border transition-all duration-200"
                     style={{
+                      backgroundColor: "var(--background)",
+                      borderColor: "var(--border)",
                       color: "var(--foreground)",
-                      backgroundColor: "var(--secondary)",
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "var(--border)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "var(--secondary)";
-                    }}
-                  >
-                    View all results for "{searchQuery}"
-                  </button>
+                    autoComplete="off"
+                  />
+
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-4 h-4" style={{ color: "var(--foreground-muted)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+
+                  {searchQuery ? (
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 grid place-items-center w-8 h-8 rounded-full transition-all active:scale-95"
+                      style={{ backgroundColor: "var(--secondary)", color: "var(--foreground)" }}
+                      aria-label="Clear search"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setShowSuggestions(false);
+                        setTimeout(() => mobileSearchInputRef.current?.focus?.(), 0);
+                      }}
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  ) : null}
+
+                  {showSuggestions && searchSuggestions.length > 0 && isMobileSearchOpen ? (
+                    <div
+                      ref={suggestionsRef}
+                      className="absolute left-0 right-0 mt-2 rounded-xl shadow-xl border z-50 max-h-[60vh] overflow-y-auto"
+                      style={{ borderColor: "var(--border)", backgroundColor: "var(--background)" }}
+                    >
+                      <div className="p-2">
+                        <div className="text-xs font-semibold px-3 py-2" style={{ color: "var(--foreground-muted)" }}>
+                          Suggestions
+                        </div>
+                        {searchSuggestions.map((product) => {
+                          let images = [];
+                          try {
+                            images = product.images
+                              ? Array.isArray(product.images)
+                                ? product.images
+                                : JSON.parse(product.images)
+                              : [];
+                          } catch {
+                            images = [];
+                          }
+                          return (
+                            <button
+                              key={product.id}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                setShowSuggestions(false);
+                                setIsMobileSearchOpen(false);
+                                setSearchQuery("");
+                                navigate(`/product/${product.id}`);
+                              }}
+                              className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors cursor-pointer group"
+                              style={{ backgroundColor: "transparent" }}
+                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--secondary)"; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+                            >
+                              {images.length > 0 ? (
+                                <img src={images[0]} alt={product.name} className="w-12 h-12 object-cover rounded-lg" />
+                              ) : (
+                                <div className="w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden" style={{ backgroundColor: "var(--secondary)" }}>
+                                  <img src="/logo.png" alt="shoposphere" className="h-6 w-auto max-w-9 object-contain opacity-50" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-sm truncate" style={{ color: "var(--foreground)" }}>
+                                  {product.name}
+                                </div>
+                                {product.category?.name ? (
+                                  <div className="text-xs truncate" style={{ color: "var(--foreground-muted)" }}>
+                                    {product.category.name}
+                                  </div>
+                                ) : null}
+                              </div>
+                            </button>
+                          );
+                        })}
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            if (!searchQuery.trim()) return;
+                            setShowSuggestions(false);
+                            setIsMobileSearchOpen(false);
+                            navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+                          }}
+                          className="block w-full px-3 py-2 rounded-lg text-sm font-semibold text-center transition-colors"
+                          style={{ color: "var(--foreground)", backgroundColor: "var(--secondary)" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "var(--border)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "var(--secondary)"; }}
+                        >
+                          View all results for "{searchQuery}"
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
 

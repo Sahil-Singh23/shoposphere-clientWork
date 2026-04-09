@@ -668,3 +668,74 @@ a, button, input, textarea, select {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* =============================================================================
+   Slider/Carousel arrows — consistent chevron controls
+   ============================================================================= */
+
+.ss-slider-shell {
+  position: relative;
+}
+
+.ss-slider-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 30;
+  width: clamp(2.1rem, 1.4rem + 1.4vw, 2.9rem);
+  height: clamp(2.1rem, 1.4rem + 1.4vw, 2.9rem);
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.4);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out),
+    background-color 180ms var(--ease-out),
+    box-shadow 180ms var(--ease-out),
+    filter 180ms var(--ease-out);
+}
+
+.ss-slider-arrow:hover {
+  background: rgba(0, 0, 0, 0.52);
+  transform: translateY(-50%) scale(1.08);
+  box-shadow: 0 26px 62px rgba(0, 0, 0, 0.34);
+}
+
+.ss-slider-arrow:active {
+  transform: translateY(-50%) scale(0.96);
+}
+
+.ss-slider-arrow:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--primary), 0 22px 55px rgba(0, 0, 0, 0.28);
+}
+
+.ss-slider-arrow--left {
+  left: -0.35rem;
+}
+
+.ss-slider-arrow--right {
+  right: -0.35rem;
+}
+
+.ss-slider-arrow__icon {
+  width: clamp(1rem, 0.8rem + 0.6vw, 1.3rem);
+  height: clamp(1rem, 0.8rem + 0.6vw, 1.3rem);
+}
+
+/* Desktop: show arrows on hover/focus, keep mobile always visible */
+@media (hover: hover) and (pointer: fine) {
+  .ss-slider-shell .ss-slider-arrow {
+    opacity: 0;
+  }
+  .ss-slider-shell:hover .ss-slider-arrow,
+  .ss-slider-shell:focus-within .ss-slider-arrow {
+    opacity: 1;
+  }
+}

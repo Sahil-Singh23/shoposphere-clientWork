@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { API } from "../api";
 import { Link, useNavigate } from "react-router-dom";
 import BannerSlider from "../components/BannerSlider";
@@ -44,11 +44,17 @@ export default function Home() {
   const [reels, setReels] = useState([]);
   const [topRatedProducts, setTopRatedProducts] = useState([]);
   const [activeCategoryId, setActiveCategoryId] = useState(null);
+  const [categorySwitchingTo, setCategorySwitchingTo] = useState(null);
+  const [isCategorySwitching, setIsCategorySwitching] = useState(false);
+  const categorySwitchTimeoutRef = useRef(null);
   const [loading, setLoading] = useState({
     categories: true,
     products: true,
     reels: true,
   });
+  const trendingScrollRef = useRef(null);
+  const [trendingCanLeft, setTrendingCanLeft] = useState(false);
+  const [trendingCanRight, setTrendingCanRight] = useState(false);
   
   // Single request for homepage data (faster: 1 round-trip instead of 5)
   useEffect(() => {
@@ -81,6 +87,36 @@ export default function Home() {
     return () => ac.abort();
   }, []);
 
+  useEffect(() => {
+    const el = trendingScrollRef.current;
+    if (!el) return;
+
+    const check = () => {
+      const { scrollLeft, scrollWidth, clientWidth } = el;
+      setTrendingCanLeft(scrollLeft > 0);
+      setTrendingCanRight(scrollLeft < scrollWidth - clientWidth - 10);
+    };
+
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => {
+      el.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, []);
+
+  const scrollTrendingByCard = (direction) => {
+    const el = trendingScrollRef.current;
+    if (!el) return;
+    const first = el.firstElementChild;
+    const w = first?.getBoundingClientRect().width || 220;
+    const styles = window.getComputedStyle(el);
+    const gap = parseFloat(styles.columnGap || styles.gap || "0") || 0;
+    const delta = Math.max(220, Math.round(w + gap));
+    el.scrollBy({ left: direction === "left" ? -delta : delta, behavior: "smooth" });
+  };
+
   const isInitialLoad = loading.categories || loading.products || loading.reels;
 
   const filteredProducts = useMemo(() => {
@@ -93,6 +129,22 @@ export default function Home() {
 
   const galleryProducts = useMemo(() => filteredProducts.slice(0, 24), [filteredProducts]);
   const homeProductsCarousel = useMemo(() => products.slice(0, 10), [products]);
+
+  const triggerCategorySwitchFeedback = useCallback((nextId) => {
+    if (categorySwitchTimeoutRef.current) clearTimeout(categorySwitchTimeoutRef.current);
+    setCategorySwitchingTo(nextId ?? null);
+    setIsCategorySwitching(true);
+    categorySwitchTimeoutRef.current = setTimeout(() => {
+      setIsCategorySwitching(false);
+      setCategorySwitchingTo(null);
+    }, 320);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (categorySwitchTimeoutRef.current) clearTimeout(categorySwitchTimeoutRef.current);
+    };
+  }, []);
 
   const quickAddLanding = useCallback(
     async (product) => {
@@ -141,7 +193,7 @@ export default function Home() {
     <div className="min-h-screen fade-in home-landing pb-24 md:pb-12">
       <>
         <main>
-          <section className="px-6 sm:px-8 mb-5 max-w-7xl mx-auto pt-2 md:pt-4" aria-label="Shoposphere intro">
+          <section className="px-6 sm:px-8 mb-3 max-w-7xl mx-auto pt-1 md:pt-3" aria-label="Shoposphere intro">
             <h1 className="home-headline text-2xl font-extrabold tracking-tighter text-[#2c333d] leading-none mb-2">
               Shoposphere
             </h1>
@@ -151,33 +203,62 @@ export default function Home() {
           </section>
 
           {categories.length > 0 ? (
-            <section className="px-6 sm:px-7 mb-5 max-w-7xl mx-auto overflow-x-auto hide-scrollbar-home" aria-label="Browse by category">
-              <div className="flex gap-3 whitespace-nowrap pb-1">
+            <section className="px-6 sm:px-7 mb-3 max-w-7xl mx-auto overflow-x-auto hide-scrollbar-home" aria-label="Browse by category">
+              <div className="flex gap-2 whitespace-nowrap pb-1">
                 <button
                   type="button"
-                  onClick={() => setActiveCategoryId(null)}
+                  onClick={() => {
+                    triggerCategorySwitchFeedback(null);
+                    setActiveCategoryId(null);
+                  }}
                   className={[
-                    "px-7 sm:px-8 py-3 rounded-full text-sm font-medium transition-opacity shrink-0",
+                    "px-4 sm:px-5 py-2 rounded-full text-xs font-medium shrink-0",
+                    "transition-all duration-200 ease-out shadow-sm",
+                    "active:scale-[0.95]",
                     activeCategoryId == null
-                      ? "bg-[#2c333d] text-white"
-                      : "bg-[#e4e8f3] text-[#595f6a] hover:opacity-80",
+                      ? "bg-[#2c333d] text-white shadow-md scale-[1.02]"
+                      : "bg-[#e4e8f3] text-[#595f6a] hover:shadow-md hover:scale-[1.01]",
                   ].join(" ")}
                 >
-                  All
+                  <span className="inline-flex items-center gap-2">
+                    {isCategorySwitching && categorySwitchingTo == null ? (
+                      <span
+                        className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/70 border-t-transparent"
+                        aria-hidden
+                      />
+                    ) : null}
+                    All
+                  </span>
                 </button>
                 {categories.map((cat) => {
                   const active = Number(activeCategoryId) === Number(cat.id);
+                  const switchingThis = isCategorySwitching && Number(categorySwitchingTo) === Number(cat.id);
                   return (
                     <button
                       key={cat.id}
                       type="button"
-                      onClick={() => setActiveCategoryId(cat.id)}
+                      onClick={() => {
+                        triggerCategorySwitchFeedback(cat.id);
+                        setActiveCategoryId(cat.id);
+                      }}
                       className={[
-                        "px-7 sm:px-8 py-3 rounded-full text-sm font-medium transition-opacity shrink-0",
-                        active ? "bg-[#2c333d] text-white" : "bg-[#e4e8f3] text-[#595f6a] hover:opacity-80",
+                        "px-4 sm:px-5 py-2 rounded-full text-xs font-medium shrink-0",
+                        "transition-all duration-200 ease-out shadow-sm",
+                        "active:scale-[0.95]",
+                        active
+                          ? "bg-[#2c333d] text-white shadow-md scale-[1.02]"
+                          : "bg-[#e4e8f3] text-[#595f6a] hover:shadow-md hover:scale-[1.01]",
                       ].join(" ")}
                     >
-                      {cat.name}
+                      <span className="inline-flex items-center gap-2">
+                        {switchingThis ? (
+                          <span
+                            className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/70 border-t-transparent"
+                            aria-hidden
+                          />
+                        ) : null}
+                        {cat.name}
+                      </span>
                     </button>
                   );
                 })}
@@ -189,10 +270,25 @@ export default function Home() {
             <div className="px-6 sm:px-8 max-w-7xl mx-auto mb-6">
               <h2 className="home-headline text-2xl sm:text-3xl font-bold tracking-tight text-[#2c333d]">Trending</h2>
             </div>
-            <div
-              className="flex overflow-x-auto hide-scrollbar-home gap-1 sm:gap-1 px-6 sm:px-20 pb-2"
-              style={{ WebkitOverflowScrolling: "touch" }}
-            >
+            <div className="ss-slider-shell">
+              {trendingCanLeft ? (
+                <button
+                  type="button"
+                  className="ss-slider-arrow ss-slider-arrow--left"
+                  aria-label="Scroll trending left"
+                  onClick={() => scrollTrendingByCard("left")}
+                >
+                  <svg className="ss-slider-arrow__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                  </svg>
+                </button>
+              ) : null}
+
+              <div
+                ref={trendingScrollRef}
+                className="flex overflow-x-auto hide-scrollbar-home gap-1 sm:gap-1 px-6 sm:px-20 pb-2"
+                style={{ WebkitOverflowScrolling: "touch" }}
+              >
               {isInitialLoad
                 ? Array.from({ length: 5 }).map((_, i) => (
                     <div
@@ -204,13 +300,27 @@ export default function Home() {
                       <div className="h-3 bg-[#e4e8f3] rounded w-1/4" />
                     </div>
                   ))
-                : galleryProducts.length === 0
+                : isCategorySwitching
+                  ? Array.from({ length: 6 }).map((_, i) => (
+                      <div
+                        key={`cat-switch-skel-${i}`}
+                        className="min-w-[200px] max-w-[200px] bg-white rounded-t-[45px] rounded-b-none p-2 shadow-[0_10px_40px_rgba(44,51,61,0.06)] border border-[#dce3f0]/40 relative animate-pulse"
+                      >
+                        <div className="aspect-[3/4] rounded-t-[45px] overflow-hidden mb-6 bg-[#f2f3fa]" />
+                        <div className="h-3 bg-[#e4e8f3] rounded w-2/3 mb-2" />
+                        <div className="h-3 bg-[#e4e8f3] rounded w-1/3" />
+                      </div>
+                    ))
+                  : galleryProducts.length === 0
                   ? (
                       <div className="min-w-full px-2 py-10 text-center">
                         <p className="text-[#595f6a] text-sm mb-4">Nothing here yet — try another category.</p>
                         <button
                           type="button"
-                          onClick={() => setActiveCategoryId(null)}
+                          onClick={() => {
+                            triggerCategorySwitchFeedback(null);
+                            setActiveCategoryId(null);
+                          }}
                           className="text-sm font-semibold text-[#2c333d] underline underline-offset-4"
                         >
                           Show all products
@@ -293,6 +403,20 @@ export default function Home() {
                       </article>
                     );
                   })}
+              </div>
+
+              {trendingCanRight ? (
+                <button
+                  type="button"
+                  className="ss-slider-arrow ss-slider-arrow--right"
+                  aria-label="Scroll trending right"
+                  onClick={() => scrollTrendingByCard("right")}
+                >
+                  <svg className="ss-slider-arrow__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </button>
+              ) : null}
             </div>
           </section>
 

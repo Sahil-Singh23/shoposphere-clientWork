@@ -550,7 +550,6 @@ export default function ProductDetail() {
       { size: "L", in: { chest: "42", shoulder: "17.75", length: "29" }, cm: { chest: "106", shoulder: "44", length: "74" } },
       { size: "XL", in: { chest: "45", shoulder: "18.75", length: "30" }, cm: { chest: "114", shoulder: "48", length: "76" } },
       { size: "XXL", in: { chest: "47", shoulder: "19.25", length: "30.5" }, cm: { chest: "119", shoulder: "49", length: "77" } },
-      { size: "XXXL", in: { chest: "49", shoulder: "19.75", length: "30.5" }, cm: { chest: "124", shoulder: "50", length: "77" } },
     ],
     []
   );

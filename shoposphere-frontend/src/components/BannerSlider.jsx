@@ -65,7 +65,7 @@ export default function BannerSlider({ bannerType = "primary" }) {
 
   return (
     <div 
-      className="relative w-full overflow-hidden"
+      className="ss-slider-shell w-full overflow-hidden"
       style={{ paddingBottom: `${bannerAspectRatio}%` }}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
@@ -132,19 +132,19 @@ export default function BannerSlider({ bannerType = "primary" }) {
         <>
           <button
             onClick={goToPrevious}
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95"
+            className="ss-slider-arrow ss-slider-arrow--left"
             aria-label="Previous banner"
           >
-            <svg className="w-6 h-6" style={{ color: 'oklch(20% .02 340)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="ss-slider-arrow__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
           <button
             onClick={goToNext}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95"
+            className="ss-slider-arrow ss-slider-arrow--right"
             aria-label="Next banner"
           >
-            <svg className="w-6 h-6" style={{ color: 'oklch(20% .02 340)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="ss-slider-arrow__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
